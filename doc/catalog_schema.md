@@ -17,32 +17,32 @@
 * y_img
 	* List
 	* Y locations of images relative to lens (arc seconds)
-* t_delay
+* t_delay_img
 	* List
 	* Time Delays of each image (days)
-* magnification
+* magnification_img
 	* List
 	* Image magnification
 
 ### Lens Galaxy Properties
-* lens SED
+* lens_sed
 	* Str
 	* SED filename of lens galaxy
-* ZLENS
+* z_lens
 	* Float
 	* Redshift of lens galaxy
-* REFF
+* reff_lens
 	* Float
 	* Effective Radius of lens galaxy
-* ELLIP
+* ellip_lens
 	* Float
 	* Ellipticity of lens galaxy
-* PHIE
+* phie_lens
 	* Float
 	* Position Angle of lens galaxy
-* LENS_AV
+* av_lens
 	* Float
 	* Lens Galaxy AV
-* LENS_RV
+* rv_lens
 	* Float
 	* Lens Galaxy RV
