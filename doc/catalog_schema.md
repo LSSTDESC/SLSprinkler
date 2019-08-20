@@ -1,10 +1,11 @@
 # Catalog Schema for Sprinkler
 
 ## Necessary Inputs from Lensed Catalogs (OM10, Goldstein et al.)
-### Lens Images Properties
+### General Properties
 * system_id
 	* INT
 	* Identifier in Catalog
+### Lens Images Properties
 * n_img
 	* INT
 	* Number of Images in system
