@@ -7,6 +7,8 @@
 	* Identifier in Catalog
 
 ### Lens Images Properties
+
+#### For All Catalogs
 * n_img
 	* INT
 	* Number of Images in system
@@ -25,6 +27,18 @@
 * magnification_img
 	* List
 	* Image magnification
+* gamma
+	* Float
+* phi_gamma
+	* Float
+
+#### For SNe catalogs only
+* MB_host
+	* Float
+	* Bolometric magnitude of host galaxy
+* type_host
+	* Str
+	* Type of Host Galaxy
 
 ### Lens Galaxy Properties
 * lens_sed
@@ -48,3 +62,7 @@
 * rv_lens
 	* Float
 	* Lens Galaxy RV
+* vel_disp_lens
+	* Float
+	* Lens Galaxy Velocity Dispersion
+
