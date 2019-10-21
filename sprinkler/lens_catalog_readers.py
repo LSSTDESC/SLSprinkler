@@ -30,6 +30,7 @@ class OM10Reader():
             't_delay_img':'DELAY',
             'magnification_img':'MAG',
             'sed_lens':'lens_sed',
+            'magnorm_lens':'sed_magNorm',
             'z_lens':'ZLENS',
             'reff_lens':'REFF',
             'ellip_lens':'ELLIP',
@@ -73,6 +74,7 @@ class GoldsteinSNeCatReader():
             'MB_host':'MB',
             'type_host':'host_type',
             'sed_lens':'lensgal_sed',
+            'magnorm_lens':'magnorm_lens',
             'z_lens':'zl',
             'reff_lens':'lensgal_reff',
             'ellip_lens':'lensgal_ellip',
@@ -81,7 +83,10 @@ class GoldsteinSNeCatReader():
             'rv_lens':'lens_rv',
             'vel_disp_lens':'sigma',
             'gamma':'gamma',
-            'phi_gamma':'theta_gamma'
+            'phi_gamma':'theta_gamma',
+            'x0':'x0',
+            'x1':'x1',
+            'c':'c'
         }
 
     def merge_catalog(self, df_sys, df_img):
@@ -99,6 +104,18 @@ class GoldsteinSNeCatReader():
 
         return df_merged
 
+    def merge_magnorms(self, df_merged):
+
+        lensgal_magnorm = df_merged[['lensgal_magnorm_u',
+                                     'lensgal_magnorm_g',
+                                     'lensgal_magnorm_r',
+                                     'lensgal_magnorm_i',
+                                     'lensgal_magnorm_z',
+                                     'lensgal_magnorm_y']].values
+        
+        df_merged['magnorm_lens'] = list(lensgal_magnorm)
+
+        return df_merged
 
     def load_catalog(self):
 
@@ -106,6 +123,8 @@ class GoldsteinSNeCatReader():
         sne_images = pd.read_hdf(self.filename, key='image')
         
         sne_merged = self.merge_catalog(sne_systems, sne_images)
+
+        sne_merged = self.merge_magnorms(sne_merged)
 
         lensed_sne_cat = {}
 
