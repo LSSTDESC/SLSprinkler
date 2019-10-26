@@ -63,6 +63,7 @@ class DC2Reader():
             'flux_z_disk':'disk_fluxes_z',
             'flux_y_disk':'disk_fluxes_y',
             'magnorm_agn':'magNorm_agn',
+            'mag_i_agn':'mag_i_agn',
             'varParamStr_agn':'varParamStr_agn'
         }
 

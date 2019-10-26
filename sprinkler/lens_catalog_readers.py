@@ -24,6 +24,7 @@ class OM10Reader():
         self.config = {
             'system_id':'LENSID',
             'z_src':'ZSRC',
+            'mag_i_src':'MAGI_IN',
             'n_img':'NIMG',
             'x_img':'XIMG',
             'y_img':'YIMG',
