@@ -38,30 +38,11 @@ class DC2Reader():
             'semi_minor_axis_disk':'size_minor_disk_true',
             'semi_minor_axis_bulge':'size_minor_bulge_true',
             'position_angle':'position_angle_true',
-            'magnorm_u_bulge':'bulge_magnorm_u',
-            'magnorm_g_bulge':'bulge_magnorm_g',
-            'magnorm_r_bulge':'bulge_magnorm_r',
-            'magnorm_i_bulge':'bulge_magnorm_i',
-            'magnorm_z_bulge':'bulge_magnorm_z',
-            'magnorm_y_bulge':'bulge_magnorm_y',
-            'magnorm_u_disk':'disk_magnorm_u',
-            'magnorm_g_disk':'disk_magnorm_g',
-            'magnorm_r_disk':'disk_magnorm_r',
-            'magnorm_i_disk':'disk_magnorm_i',
-            'magnorm_z_disk':'disk_magnorm_z',
-            'magnorm_y_disk':'disk_magnorm_y',
-            'flux_u_bulge':'bulge_fluxes_u',
-            'flux_g_bulge':'bulge_fluxes_g',
-            'flux_r_bulge':'bulge_fluxes_r',
-            'flux_i_bulge':'bulge_fluxes_i',
-            'flux_z_bulge':'bulge_fluxes_z',
-            'flux_y_bulge':'bulge_fluxes_y',
-            'flux_u_disk':'disk_fluxes_u',
-            'flux_g_disk':'disk_fluxes_g',
-            'flux_r_disk':'disk_fluxes_r',
-            'flux_i_disk':'disk_fluxes_i',
-            'flux_z_disk':'disk_fluxes_z',
-            'flux_y_disk':'disk_fluxes_y',
+            'magnorm_disk':'disk_magnorm',
+            'magnorm_bulge':'bulge_magnorm',
+            'fluxes_disk':'disk_fluxes',
+            'fluxes_bulge':'bulge_fluxes',
+            'gal_type':'host_type',
             'magnorm_agn':'magNorm_agn',
             'mag_i_agn':'mag_i_agn',
             'varParamStr_agn':'varParamStr_agn'
@@ -79,8 +60,6 @@ class DC2Reader():
         label_array = df_merged[labelled_columns].values
         
         df_merged[label] = list(label_array)
-
-        df_columns = [x for x in df_merged.columns if x not in labelled_columns]
 
         return df_merged
 

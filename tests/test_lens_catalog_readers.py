@@ -16,7 +16,7 @@ class testGoldsteinSNeCatReader(unittest.TestCase):
 
     def test_load_reader(self):
 
-        glsne_reader = GoldsteinSNeCatReader('../data/glsne_cosmoDC2_v1.1.4.h5')
+        glsne_reader = GoldsteinSNeCatReader('../data/glsne_test.h5')
         lensed_sne_cat = glsne_reader.load_catalog()
         print(pd.DataFrame(lensed_sne_cat))
 

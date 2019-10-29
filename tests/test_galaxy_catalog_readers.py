@@ -8,7 +8,7 @@ class testDC2Reader(unittest.TestCase):
 
     def test_load_reader(self):
 
-        dc2_reader = DC2Reader('../data/full_ddf.pkl')
+        dc2_reader = DC2Reader('../data/test_ddf.pkl')
         dc2_cat = dc2_reader.load_catalog()
         print(pd.DataFrame(dc2_cat))
 

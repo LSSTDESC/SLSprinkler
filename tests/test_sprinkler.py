@@ -11,8 +11,8 @@ class testSprinkler(unittest.TestCase):
     def setUpClass(cls):
 
         cls.gl_agn_cat = '../data/twinkles_lenses_cosmoDC2_v1.1.4.fits'
-        cls.gl_sne_cat = '../data/glsne_cosmoDC2_v1.1.4.h5'
-        cls.gal_cat = '../data/full_ddf.pkl'
+        cls.gl_sne_cat = '../data/glsne_test.h5'
+        cls.gal_cat = '../data/test_ddf.pkl'
 
         cls.glagn_reader = OM10Reader
         cls.glsne_reader = GoldsteinSNeCatReader
@@ -30,7 +30,11 @@ class testSprinkler(unittest.TestCase):
 
     def test_match_agn(self):
 
-        self.sl_sprinkler.sprinkle()
+        self.sl_sprinkler.sprinkle_agn()
+
+    def test_match_sne(self):
+
+        self.sl_sprinkler.sprinkle_sne()
 
 
 if __name__ == '__main__':
