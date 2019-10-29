@@ -1,11 +1,10 @@
 import sys
 sys.path.append('..')
 import unittest
-import pandas as pd
 from sprinkler import OM10Reader, GoldsteinSNeCatReader, DC2Reader
-from sprinkler import Sprinkler
+from sprinkler import BaseSprinkler
 
-class testSprinkler(unittest.TestCase):
+class testBaseSprinkler(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -18,9 +17,9 @@ class testSprinkler(unittest.TestCase):
         cls.glsne_reader = GoldsteinSNeCatReader
         cls.gal_reader = DC2Reader
 
-        cls.sl_sprinkler = Sprinkler(cls.gl_agn_cat, cls.glagn_reader,
-                                     cls.gl_sne_cat, cls.glsne_reader,
-                                     cls.gal_cat, cls.gal_reader)
+        cls.sl_sprinkler = BaseSprinkler(cls.gl_agn_cat, cls.glagn_reader,
+                                         cls.gl_sne_cat, cls.glsne_reader,
+                                         cls.gal_cat, cls.gal_reader)
 
     def test_loader(self):
 

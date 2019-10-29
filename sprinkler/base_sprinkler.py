@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
 
-__all__ = ['Sprinkler']
+__all__ = ['BaseSprinkler']
 
 
-class Sprinkler():
+class BaseSprinkler():
 
-    def __init__(self, 
+    def __init__(self,
                  gl_agn_cat, glagn_reader,
                  gl_sne_cat, glsne_reader,
                  gal_cat, gal_reader,
