@@ -109,4 +109,25 @@ class Sprinkler():
         sne_match_idx = self.match_sne(sne_gals['redshift'].values,
                                        sne_gals['gal_type'].values)
 
-        return
+        sprinkled_sne_gal_rows = []
+        sprinkled_gl_sne_cat_rows = []
+        for i, sne_cat_idx in list(enumerate(sne_match_idx)):
+
+            sne_idx_keep = [x for x in sne_cat_idx
+                            if x not in sprinkled_gl_sne_cat_rows]
+
+            if len(sne_idx_keep) == 0:
+                continue
+
+            sne_density = self.sne_density(sne_gals.iloc[i])
+
+            density_draw = rand_state.uniform()
+            if density_draw <= sne_density:
+                sprinkled_gl_sne_cat_rows.append(
+                    rand_state.choice(sne_idx_keep))
+                sprinkled_sne_gal_rows.append(i)
+
+        sne_gals = sne_gals.iloc[sprinkled_sne_gal_rows]
+        sne_sys_cat = self.gl_sne_cat.iloc[sprinkled_gl_sne_cat_rows]
+
+        return sne_gals, sne_sys_cat
