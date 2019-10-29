@@ -1,3 +1,3 @@
 from .lens_catalog_readers import *
 from .galaxy_catalog_readers import *
-from .sprinkler import *
+from .base_sprinkler import *
