@@ -14,6 +14,7 @@ class DC2Sprinkler(BaseSprinkler):
 
         # search the OM10 catalog for all sources +- 0.1 dex in redshift
         # and within .25 mags of the AGN source
+        # and within redshift range of cosmoDC2 (z <= 3)
         lens_candidate_idx = []
         for gal_z_on, gal_i_mag_on in zip(gal_z, gal_i_mag):
             w = np.where((np.abs(np.log10(self.gl_agn_cat['z_src']) -
@@ -41,8 +42,22 @@ class DC2Sprinkler(BaseSprinkler):
         return lens_candidate_idx
 
     def agn_density(self, agn_gal_row):
+        
+        density_norm = 1.0
+        
+        bins_z = np.linspace(0.26212831, 3.1, 21)
+        dens_z = np.genfromtxt('../data/agn_z_density.dat')
+        dens_z_idx = np.digitize(agn_gal_row['redshift'], bins_z)
+        density_z = dens_z[dens_z_idx-1]
 
-        return 0.1
+        bins_imag = np.linspace(15.48, 27.22, 21)
+        dens_imag = np.genfromtxt('../data/agn_imag_density.dat')
+        dens_imag_idx = np.digitize(agn_gal_row['mag_i_agn'], bins_imag)
+        density_imag = dens_imag[dens_imag_idx-1]
+        
+        density_val = density_z * density_imag * density_norm
+        
+        return density_val
 
     def sne_density(self, sne_gal_row):
 
