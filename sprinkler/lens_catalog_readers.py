@@ -67,6 +67,7 @@ class GoldsteinSNeCatReader():
         self.config = {
             'system_id':'sysno',
             'z_src':'zs',
+            't0':'t0',
             'n_img':'n_img',
             'x_img':'x_img',
             'y_img':'y_img',
