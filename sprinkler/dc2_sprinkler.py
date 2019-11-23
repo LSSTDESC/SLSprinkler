@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
@@ -102,14 +103,16 @@ class DC2Sprinkler(BaseSprinkler):
 
             if len(sne_idx_keep) == 0:
                 continue   
+
+            weight = self.gl_sne_cat['weight'].iloc[sne_idx_keep]
             
             sprinkled_gl_sne_cat_rows.append(
-                rand_state.choice(sne_idx_keep))
+                rand_state.choice(sne_idx_keep, p = weight/np.sum(weight)))
             sprinkled_sne_gal_rows.append(i)
             
         return sprinkled_sne_gal_rows, sprinkled_gl_sne_cat_rows
 
-    def get_new_id(gal_id, new_sys_id, image_num):
+    def get_new_id(self, gal_id, new_sys_id, image_num):
 
         """
         Create a new unique id for sprinkled galaxies.
@@ -119,9 +122,26 @@ class DC2Sprinkler(BaseSprinkler):
 
         return new_id
 
-    def output_lens_galaxy_truth(self, matched_gal_cat):
+    def output_lens_galaxy_truth(self, matched_agn_hosts, matched_agn_sys,
+                                 matched_sne_hosts, matched_sne_sys, out_file,
+                                 return_df=False):
 
-        return
+        """
+        Output sqlite truth catalogs for foreground lens galaxies for
+        lensed AGN and SNe.
+        """
+
+        agn_lens_df = self.create_lens_truth_dataframe(matched_agn_hosts,
+                                                       matched_agn_sys)
+        sne_lens_df = self.create_lens_truth_dataframe(matched_sne_hosts,
+                                                       matched_sne_sys, id_offset=2000)
+
+        engine = create_engine('sqlite:///%s' % out_file, echo=False)
+        agn_lens_df.to_sql('agn_lens', con=engine)
+        sne_lens_df.to_sql('sne_lens', con=engine)
+
+        if return_df is True:
+            return agn_lens_df, sne_lens_df
 
     def create_lens_truth_dataframe(self, matched_hosts, matched_sys_cat, id_offset=0):
 
@@ -152,11 +172,11 @@ class DC2Sprinkler(BaseSprinkler):
             kappa = 0. #matched_hosts.iloc[i]['kappa']
             sindex_lens = 4
                 
-                major_axis_disk = matched_hosts.iloc[i]['semi_major_axis_disk']
-                major_axis_lens = matched_hosts.iloc[i]['semi_major_axis_lens']
-                minor_axis_disk = matched_hosts.iloc[i]['semi_minor_axis_disk']
-                minor_axis_lens = matched_hosts.iloc[i]['semi_minor_axis_lens']
-                position_angle = matched_hosts.iloc[i]['position_angle']
+            major_axis_lens = matched_sys_cat.iloc[i]['reff_lens'] / \
+                                np.sqrt(1 - matched_sys_cat['ellip_lens'])
+            minor_axis_lens = matched_sys_cat.iloc[i]['reff_lens'] * \
+                                np.sqrt(1 - matched_sys_cat['ellip_lens'])
+            position_angle = matched_sys_cat.iloc[i]['phie_lens']*(-1.0)*np.pi/180.0
                 
             av_internal_lens = matched_sys_cat.iloc[i]['av_lens']
             rv_internal_lens = matched_sys_cat.iloc[i]['rv_lens']
@@ -170,8 +190,8 @@ class DC2Sprinkler(BaseSprinkler):
             new_row = [unique_id, ra_lens, dec_lens,
                        magnorm_lens_u, magnorm_lens_g, magnorm_lens_r,
                        magnorm_lens_i, magnorm_lens_z, magnorm_lens_y,
-                       redshift, shear_1, shear_2, kappa, sindex_lens, sindex_disk,
-                       major_axis_lens, minor_axis_disk, minor_axis_lens,
+                       redshift, shear_1, shear_2, kappa, sindex_lens,
+                       major_axis_lens, minor_axis_lens,
                        position_angle, av_internal_lens,
                        rv_internal_lens, av_mw, rv_mw, sed_lens,
                        gal_id, cat_sys_id, new_sys_id]
@@ -189,7 +209,7 @@ class DC2Sprinkler(BaseSprinkler):
                                         'av_internal_lens', 'rv_internal_lens',
                                         'av_mw', 'rv_mw', 
                                         'sed_lens', 'original_gal_id', 
-                                        'twinkles_system', 'dc2_sys_id', 'image_number'])
+                                        'lens_cat_sys_id', 'dc2_sys_id'])
         
         return lens_df
 
@@ -225,7 +245,7 @@ class DC2Sprinkler(BaseSprinkler):
                 gal_id = matched_hosts.iloc[i]['galaxy_id']+j
                 new_sys_id = i + id_offset
                 image_number = j
-                unique_id = get_new_id(gal_id, new_sys_id, image_number)
+                unique_id = self.get_new_id(gal_id, new_sys_id, image_number)
 
                 ra_lens = matched_hosts.iloc[i]['ra']
                 dec_lens = matched_hosts.iloc[i]['dec']
@@ -302,23 +322,121 @@ class DC2Sprinkler(BaseSprinkler):
                                         'rv_internal_disk', 'rv_internal_bulge',
                                         'av_mw', 'rv_mw', 'sed_disk_host',
                                         'sed_bulge_host', 'original_gal_id', 
-                                        'twinkles_system', 'dc2_sys_id', 'image_number'])
+                                        'lens_cat_sys_id', 'dc2_sys_id', 'image_number'])
         
         return host_df
 
-    def output_lensed_agn_truth(self, matched_agn_cat):
+    def output_lensed_agn_truth(self, matched_hosts,
+                                matched_sys_cat, out_file,
+                                return_df=False, id_offset=0):
 
-        return
+        new_entries = []
 
-    def output_lensed_sne_truth(self, matched_sne_cat):
+        for i in range(len(matched_sys_cat)):
+            for j in range(matched_sys_cat.iloc[i]['n_img']):
 
-        return
+                gal_id = matched_hosts.iloc[i]['galaxy_id']+j
+                new_sys_id = i + id_offset
+                image_number = j
+                gal_unique_id = self.get_new_id(gal_id, new_sys_id, image_number)
 
-    def output_truth_catalogs(self, matched_gal_cat,
-                              matched_agn_cat,
-                              matched_sne_cat):
+                ra_lens = matched_hosts.iloc[i]['ra']
+                dec_lens = matched_hosts.iloc[i]['dec']
+                delta_ra = np.radians(matched_sys_cat.iloc[i]['x_img'][j] / 3600.0)
+                delta_dec = np.radians(matched_sys_cat.iloc[i]['y_img'][j] / 3600.0)
+                ra = ra_lens + delta_ra/np.cos(dec_lens)
+                dec = dec_lens + delta_dec
 
-        return
+                redshift = matched_sys_cat.iloc[i]['z_src']
+                t_delay = matched_sys_cat.iloc[i]['t_delay_img'][j]
+
+                magnorm = matched_hosts.iloc[i]['magnorm_agn']
+                mag = matched_sys_cat.iloc[i]['magnification_img'][j]
+
+                agn_var_param = json.loads(matched_hosts.iloc[i]['varParamStr_agn'])['p']
+                seed = agn_var_param['seed']
+                agn_tau = agn_var_param['agn_tau']
+                agn_sfu = agn_var_param['agn_sfu']
+                agn_sfg = agn_var_param['agn_sfg']
+                agn_sfr = agn_var_param['agn_sfr']
+                agn_sfi = agn_var_param['agn_sfi']
+                agn_sfz = agn_var_param['agn_sfz']
+                agn_sfy = agn_var_param['agn_sfy']
+
+                cat_sys_id = matched_sys_cat.iloc[i]['system_id']
+
+                new_row = [gal_unique_id, gal_unique_id, ra, dec, 
+                           redshift, t_delay, magnorm, mag, 
+                           seed, agn_tau, agn_sfu, agn_sfg, agn_sfr, 
+                           agn_sfi, agn_sfz, agn_sfy,
+                           cat_sys_id, image_number]
+                
+                new_entries.append(new_row)
+
+        agn_df = pd.DataFrame(new_entries,
+                              columns=['unique_id', 'gal_unq_id', 'ra', 'dec',
+                                       'redshift', 't_delay', 'magnorm', 'magnification',
+                                       'seed', 'agn_tau', 'agn_sfu', 'agn_sfg', 'agn_sfr',
+                                       'agn_sfi', 'agn_sfz', 'agn_sfy',
+                                       'lens_cat_sys_id', 'image_number'])
+
+        engine = create_engine('sqlite:///%s' % out_file, echo=False)
+        agn_df.to_sql('lensed_agn', con=engine)
+
+        if return_df is True:
+            return agn_df
+
+    def output_lensed_sne_truth(self, matched_hosts,
+                                matched_sys_cat, out_file,
+                                return_df=False, id_offset=0):
+
+        new_entries = []
+
+        for i in range(len(matched_sys_cat)):
+            for j in range(matched_sys_cat.iloc[i]['n_img']):
+
+                gal_id = matched_hosts.iloc[i]['galaxy_id']+j
+                new_sys_id = i + id_offset
+                image_number = j
+                gal_unique_id = self.get_new_id(gal_id, new_sys_id, image_number)
+
+                ra_lens = matched_hosts.iloc[i]['ra']
+                dec_lens = matched_hosts.iloc[i]['dec']
+                delta_ra = np.radians(matched_sys_cat.iloc[i]['x_img'][j] / 3600.0)
+                delta_dec = np.radians(matched_sys_cat.iloc[i]['y_img'][j] / 3600.0)
+                ra = ra_lens + delta_ra/np.cos(dec_lens)
+                dec = dec_lens + delta_dec
+
+                t0 = matched_sys_cat.iloc[i]['t0']
+                t_delay = matched_sys_cat.iloc[i]['t_delay_img'][j]
+                mb = matched_sys_cat.iloc[i]['MB']
+                mag = matched_sys_cat.iloc[i]['magnification_img'][j]
+                x0 = matched_sys_cat.iloc[i]['x0']
+                x1 = matched_sys_cat.iloc[i]['x1']
+                c = matched_sys_cat.iloc[i]['c']
+                host_type = matched_sys_cat.iloc[i]['type_host']
+
+                redshift = matched_sys_cat.iloc[i]['z_src']
+
+                cat_sys_id = matched_sys_cat.iloc[i]['system_id']
+
+                new_row = [gal_unique_id, gal_unique_id, ra, dec, t0,
+                           t_delay, mb, mag, x0, x1, c, host_type,
+                           redshift, cat_sys_id, image_number]
+                
+                new_entries.append(new_row)
+
+        sne_df = pd.DataFrame(new_entries,
+                              columns=['unique_id', 'gal_unq_id', 'ra', 'dec',
+                                       't0', 't_delay', 'MB', 'magnification',
+                                       'x0', 'x1', 'c', 'host_type', 'redshift',
+                                       'lens_cat_sys_id', 'image_number'])
+
+        engine = create_engine('sqlite:///%s' % out_file, echo=False)
+        sne_df.to_sql('lensed_sne', con=engine)
+
+        if return_df is True:
+            return sne_df
 
     def generate_matched_catalogs(self):
 

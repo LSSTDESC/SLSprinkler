@@ -73,7 +73,7 @@ class GoldsteinSNeCatReader():
             'y_img':'y_img',
             't_delay_img':'t_delay_img',
             'magnification_img':'magnification_img',
-            'MB_host':'MB',
+            'MB':'MB',
             'type_host':'host_type',
             'sed_lens':'lensgal_sed',
             'magnorm_lens':'magnorm_lens',
@@ -88,7 +88,8 @@ class GoldsteinSNeCatReader():
             'phi_gamma':'theta_gamma',
             'x0':'x0',
             'x1':'x1',
-            'c':'c'
+            'c':'c',
+            'weight':'weight'
         }
 
     def merge_catalog(self, df_sys, df_img):
