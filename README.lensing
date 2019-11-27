@@ -1,0 +1,22 @@
+To generate the FITS files of the lensed hosts, you will need to run the followi
+ng commands only once:
+
+python lensed_hosts/generate_lensed_hosts_agn.py
+python lensed_hosts/generate_lensed_hosts_sne.py
+
+
+The default location of the output is SLSprinkler/lensed_hosts/outputs. Ther
+e are 4 subdirectories, called (by default):
+"SLSprinkler/lensed_hosts/outputs/agn_lensed_bulges"
+"SLSprinkler/lensed_hosts/outputs/agn_lensed_disks"
+"SLSprinkler/lensed_hosts/outputs/sne_lensed_bulges"
+"SLSprinkler/lensed_hosts/outputs/sne_lensed_disks"
+
+The FITS stamps that are generated are named as "<SystemID>_
+<uband_Lensed magnitude>_
+<gband_Lensed magnitude>_
+<rband_Lensed magnitude>_
+<iband_Lensed magnitude>_
+<zband_Lensed magnitude>_
+<yband_Lensed magnitude>_
+bulge/disk>.fits"
