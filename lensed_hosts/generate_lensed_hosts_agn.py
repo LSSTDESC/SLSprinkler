@@ -76,22 +76,22 @@ def create_cats_agns(index, hdu_list, ahb_list):
     Dec_lens = ahb['dec_lens'][index]
     idx = hdu_list[1].data['twinklesid'] == twinkles_ID
     
-    lid = hdu_list[1].data['LENSID'][idx]#[0]
+    lid = hdu_list[1].data['LENSID'][idx][0]
     xl1 = 0.0
     xl2 = 0.0
-    vd = hdu_list[1].data['VELDISP'][idx]#[0]
-    zd = hdu_list[1].data['ZLENS'][idx]#[0]
-    ql  = 1.0 - hdu_list[1].data['ELLIP'][idx]#[0]
-    phi= hdu_list[1].data['PHIE'][idx]#[0]
+    vd = hdu_list[1].data['VELDISP'][idx][0]
+    zd = hdu_list[1].data['ZLENS'][idx][0]
+    ql  = 1.0 - hdu_list[1].data['ELLIP'][idx][0]
+    phi= hdu_list[1].data['PHIE'][idx][0]
 
-    ys1 = hdu_list[1].data['XSRC'][idx]#[0]
-    ys2 = hdu_list[1].data['YSRC'][idx]#[0]
+    ys1 = hdu_list[1].data['XSRC'][idx][0]
+    ys2 = hdu_list[1].data['YSRC'][idx][0]
 
-    ext_shr = hdu_list[1].data['GAMMA'][idx]#[0]
-    ext_phi = hdu_list[1].data['PHIG'][idx]#[0]
+    ext_shr = hdu_list[1].data['GAMMA'][idx][0]
+    ext_phi = hdu_list[1].data['PHIG'][idx][0]
 
-    ximg = hdu_list[1].data['XIMG'][idx]#[0]
-    yimg = hdu_list[1].data['YIMG'][idx]#[0]
+    ximg = hdu_list[1].data['XIMG'][idx][0]
+    yimg = hdu_list[1].data['YIMG'][idx][0]
 
 
     #----------------------------------------------------------------------------
