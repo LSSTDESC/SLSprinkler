@@ -56,7 +56,7 @@ class DC2Sprinkler(BaseSprinkler):
 
         w = np.where((np.abs(np.log10(self.gl_sne_cat['z_src']) -
                              np.log10(gal_z)) <= 0.05) &
-                     (self.gl_sne_cat['type_host'] == gal_type))
+                     (self.gl_sne_cat['host_type'] == gal_type))
         lens_candidate_idx = w[0]    
 
         return lens_candidate_idx
@@ -414,7 +414,7 @@ class DC2Sprinkler(BaseSprinkler):
                 x0 = matched_sys_cat.iloc[i]['x0']
                 x1 = matched_sys_cat.iloc[i]['x1']
                 c = matched_sys_cat.iloc[i]['c']
-                host_type = matched_sys_cat.iloc[i]['type_host']
+                host_type = matched_sys_cat.iloc[i]['host_type']
 
                 redshift = matched_sys_cat.iloc[i]['z_src']
 

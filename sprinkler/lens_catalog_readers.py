@@ -74,7 +74,7 @@ class GoldsteinSNeCatReader():
             't_delay_img':'t_delay_img',
             'magnification_img':'magnification_img',
             'MB':'MB',
-            'type_host':'host_type',
+            'host_type':'host_type',
             'sed_lens':'lensgal_sed',
             'magnorm_lens':'magnorm_lens',
             'z_lens':'zl',
