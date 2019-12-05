@@ -1,3 +1,4 @@
+import os
 import json
 import pandas as pd
 import numpy as np
@@ -8,6 +9,11 @@ __all__ = ['DC2Sprinkler']
 
 
 class DC2Sprinkler(BaseSprinkler):
+
+    def __init__(self, agn_density_file_dir, *args):
+
+        super().__init__(*args)
+        self.agn_density_file_dir = agn_density_file_dir
 
     def find_possible_match_agn(self, gal_cat):
 
@@ -32,16 +38,20 @@ class DC2Sprinkler(BaseSprinkler):
         density_norm = 1.0
         
         bins_z = np.linspace(0.26212831, 3.1, 21)
-        dens_z = np.genfromtxt('../data/agn_z_density.dat')
+        dens_z_file = os.path.join(self.agn_density_file_dir,
+                                   'agn_z_density.dat')
+        dens_z = np.genfromtxt(dens_z_file)
         dens_z_idx = np.digitize(agn_gal_row['redshift'], bins_z)
         density_z = dens_z[dens_z_idx-1]
 
-        bins_imag = np.linspace(15.48, 27.22, 21)
-        dens_imag = np.genfromtxt('../data/agn_imag_density.dat')
-        dens_imag_idx = np.digitize(agn_gal_row['mag_i_agn'], bins_imag)
-        density_imag = dens_imag[dens_imag_idx-1]
+        bins_mag_i = np.linspace(15.48, 27.22, 21)
+        dens_mag_i_file = os.path.join(self.agn_density_file_dir,
+                                       'agn_mag_i_density.dat')
+        dens_mag_i = np.genfromtxt(dens_mag_i_file)
+        dens_mag_i_idx = np.digitize(agn_gal_row['mag_i_agn'], bins_mag_i)
+        density_mag_i = dens_mag_i[dens_mag_i_idx-1]
         
-        density_val = density_z * density_imag * density_norm
+        density_val = density_z * density_mag_i * density_norm
         
         return density_val
 
@@ -149,7 +159,7 @@ class DC2Sprinkler(BaseSprinkler):
 
         for i in range(len(matched_sys_cat)):
                 
-            gal_id = matched_hosts.iloc[i]['galaxy_id']+j
+            gal_id = matched_hosts.iloc[i]['galaxy_id']
             new_sys_id = i + id_offset
             # The newly inserted lens galaxy keeps the old gal_id
             unique_id = gal_id
@@ -173,9 +183,9 @@ class DC2Sprinkler(BaseSprinkler):
             sindex_lens = 4
                 
             major_axis_lens = matched_sys_cat.iloc[i]['reff_lens'] / \
-                                np.sqrt(1 - matched_sys_cat['ellip_lens'])
+                                np.sqrt(1 - matched_sys_cat.iloc[i]['ellip_lens'])
             minor_axis_lens = matched_sys_cat.iloc[i]['reff_lens'] * \
-                                np.sqrt(1 - matched_sys_cat['ellip_lens'])
+                                np.sqrt(1 - matched_sys_cat.iloc[i]['ellip_lens'])
             position_angle = matched_sys_cat.iloc[i]['phie_lens']*(-1.0)*np.pi/180.0
                 
             av_internal_lens = matched_sys_cat.iloc[i]['av_lens']
