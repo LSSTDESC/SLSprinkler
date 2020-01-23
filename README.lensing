@@ -12,7 +12,7 @@ e are 4 subdirectories, called (by default):
 "SLSprinkler/lensed_hosts/outputs/sne_lensed_bulges"
 "SLSprinkler/lensed_hosts/outputs/sne_lensed_disks"
 
-The FITS stamps that are generated are named as "<SystemID>_
+The FITS stamps that are generated are named as "<lens_cat_sys_id>_
 <uband_Lensed magnitude>_
 <gband_Lensed magnitude>_
 <rband_Lensed magnitude>_
