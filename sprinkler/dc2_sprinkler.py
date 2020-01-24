@@ -365,20 +365,27 @@ class DC2Sprinkler(BaseSprinkler):
 
                 agn_var_param = json.loads(matched_hosts.iloc[i]['varParamStr_agn'])['p']
                 seed = agn_var_param['seed']
-                agn_tau = agn_var_param['agn_tau']
-                agn_sfu = agn_var_param['agn_sfu']
-                agn_sfg = agn_var_param['agn_sfg']
-                agn_sfr = agn_var_param['agn_sfr']
-                agn_sfi = agn_var_param['agn_sfi']
-                agn_sfz = agn_var_param['agn_sfz']
-                agn_sfy = agn_var_param['agn_sfy']
+                agn_tau_u = agn_var_param['agn_tau_u']
+                agn_tau_g = agn_var_param['agn_tau_g']
+                agn_tau_r = agn_var_param['agn_tau_r']
+                agn_tau_i = agn_var_param['agn_tau_i']
+                agn_tau_z = agn_var_param['agn_tau_z']
+                agn_tau_y = agn_var_param['agn_tau_y']
+                agn_sf_u = agn_var_param['agn_sf_u']
+                agn_sf_g = agn_var_param['agn_sf_g']
+                agn_sf_r = agn_var_param['agn_sf_r']
+                agn_sf_i = agn_var_param['agn_sf_i']
+                agn_sf_z = agn_var_param['agn_sf_z']
+                agn_sf_y = agn_var_param['agn_sf_y']
 
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
 
                 new_row = [gal_unique_id, gal_unique_id, ra, dec, 
                            redshift, t_delay, magnorm, mag, 
-                           seed, agn_tau, agn_sfu, agn_sfg, agn_sfr, 
-                           agn_sfi, agn_sfz, agn_sfy,
+                           seed, agn_tau_u, agn_tau_u, agn_tau_u,
+                           agn_tau_u, agn_tau_u, agn_tau_u,
+                           agn_sf_u, agn_sf_g, agn_sf_r, 
+                           agn_sf_i, agn_sf_z, agn_sf_y, new_sys_id,
                            cat_sys_id, image_number]
                 
                 new_entries.append(new_row)
@@ -386,8 +393,10 @@ class DC2Sprinkler(BaseSprinkler):
         agn_df = pd.DataFrame(new_entries,
                               columns=['unique_id', 'gal_unq_id', 'ra', 'dec',
                                        'redshift', 't_delay', 'magnorm', 'magnification',
-                                       'seed', 'agn_tau', 'agn_sfu', 'agn_sfg', 'agn_sfr',
-                                       'agn_sfi', 'agn_sfz', 'agn_sfy',
+                                       'seed', 'agn_tau_u', 'agn_tau_g', 'agn_tau_r',
+                                       'agn_tau_i', 'agn_tau_z', 'agn_tau_y',
+                                       'agn_sf_u', 'agn_sf_g', 'agn_sf_r',
+                                       'agn_sf_i', 'agn_sf_z', 'agn_sf_y', 'dc2_sys_id',
                                        'lens_cat_sys_id', 'image_number'])
 
         engine = create_engine('sqlite:///%s' % out_file, echo=False)
@@ -432,7 +441,7 @@ class DC2Sprinkler(BaseSprinkler):
 
                 new_row = [gal_unique_id, gal_unique_id, ra, dec, t0,
                            t_delay, mb, mag, x0, x1, c, host_type,
-                           redshift, cat_sys_id, image_number]
+                           redshift, new_sys_id, cat_sys_id, image_number]
                 
                 new_entries.append(new_row)
 
@@ -440,7 +449,8 @@ class DC2Sprinkler(BaseSprinkler):
                               columns=['unique_id', 'gal_unq_id', 'ra', 'dec',
                                        't0', 't_delay', 'MB', 'magnification',
                                        'x0', 'x1', 'c', 'host_type', 'redshift',
-                                       'lens_cat_sys_id', 'image_number'])
+                                       'dc2_sys_id', 'lens_cat_sys_id', 
+                                       'image_number'])
 
         engine = create_engine('sqlite:///%s' % out_file, echo=False)
         sne_df.to_sql('lensed_sne', con=engine)
