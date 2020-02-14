@@ -11,8 +11,8 @@ import scipy.special as ss
 import om10_lensing_equations as ole
 import sqlite3 as sql
 
-data_dir = 'data/' #os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
-twinkles_data_dir = 'data/' #os.path.join(os.environ['TWINKLES_DIR'], 'data')
+data_dir = 'data/new_files/' #os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
+twinkles_data_dir = data_dir #os.path.join(os.environ['TWINKLES_DIR'], 'data')
 outdefault = 'outputs' #os.path.join(data_dir,'outputs')
 
 parser = argparse.ArgumentParser(description='The location of the desired output directory')
@@ -153,14 +153,13 @@ def load_in_data_sne():
     conn = sql.connect(os.path.join(data_dir,'host_truth.db'))
     sne_host = pd.read_sql_query("select * from sne_hosts;", conn)
 
+    conn2 = sql.connect(os.path.join(data_dir,'lens_truth.db'))
+    sne_lens = pd.read_sql_query("select * from sne_lens;", conn2)
+
    # idx = sne_host['image_number'] == 0
     shb_purged = sne_host#[:][idx]
-   
-    sne_lens_cats = pd.read_csv(os.path.join(twinkles_data_dir,
-                                             'cosmoDC2_v1.1.4_sne_cat.csv'))
-    idx = sne_lens_cats['imno'] == 0
 
-    slc_purged = sne_lens_cats[:][idx]
+    slc_purged = sne_lens 
 
     return slc_purged, shb_purged 
 
@@ -184,28 +183,29 @@ def create_cats_sne(index, hdu_list, ahb_list):
     srcsP_disk: Data array that includes parameters for galactic disk
 
     """
-    twinkles_ID = ahb['index'][index]+min(hdu_list['twinkles_sysno'])
 
-    UID_lens = ahb['lens_cat_sys_id'][index]
-    Ra_lens = ahb['ra_lens'][index]
-    Dec_lens = ahb['dec_lens'][index]
+    df_inner = pd.merge(ahb_list, hdu_list, on='lens_cat_sys_id', how='inner')
 
-    idx = hdu_list['twinkles_sysno'] == twinkles_ID
+ #   for col in df_inner.columns: 
+ #       print(col) 
 
-    lid = hdu_list['sysno'][idx].values[0]
-
+    UID_lens = df_inner['lens_cat_sys_id'][index]
+    twinkles_ID = UID_lens
+    Ra_lens = df_inner['ra_lens_x'][index]
+    Dec_lens = df_inner['dec_lens_x'][index]
+    ys1 = df_inner['x_src'][index]
+    ys2 = df_inner['y_src'][index]
+    ximg = df_inner['x_img'][index]
+    yimg = df_inner['y_img'][index]
     xl1 = 0.0
     xl2 = 0.0
-    vd = hdu_list['sigma'][idx].values[0]   # needed from OM10
-    zd = hdu_list['zl'][idx].values[0]
-    ql  = 1.0 - hdu_list['e'][idx].values[0]
-    phi= hdu_list['theta_e'][idx].values[0]
-
-    ys1 = hdu_list['snx'][idx].values[0]    # needed more discussion
-    ys2 = hdu_list['sny'][idx].values[0]      # needed more discussion
-
-    ext_shr = hdu_list['gamma'][idx].values[0]
-    ext_phi = hdu_list['theta_gamma'][idx].values[0]
+    lid = df_inner['lens_cat_sys_id'][index]
+    vd = df_inner['vel_disp_lenscat'][index]   # needed from OM10
+    zd = df_inner['redshift_y'][index] 
+    ql  = 1.0 - df_inner['ellip_lenscat'][index] 
+    phi= df_inner['position_angle_y'][index] 
+    ext_shr = df_inner['gamma_lenscat'][index]
+    ext_phi = df_inner['phig_lenscat'][index]
 
     #----------------------------------------------------------------------------
     lens_cat = {'xl1'        : xl1,
@@ -224,22 +224,22 @@ def create_cats_sne(index, hdu_list, ahb_list):
                 'Dec_lens'   : Dec_lens}
 
     #----------------------------------------------------------------------------
-    mag_src_d_u = ahb_list['magnorm_disk_u'][index]
-    mag_src_d_g = ahb_list['magnorm_disk_g'][index]
-    mag_src_d_r = ahb_list['magnorm_disk_r'][index]
-    mag_src_d_i = ahb_list['magnorm_disk_i'][index]
-    mag_src_d_z = ahb_list['magnorm_disk_z'][index]
-    mag_src_d_y = ahb_list['magnorm_disk_y'][index]
-    qs_d = ahb_list['minor_axis_disk'][index]/ahb_list['major_axis_disk'][index]
-    Reff_src_d = np.sqrt(ahb_list['minor_axis_disk'][index]*ahb_list['major_axis_disk'][index])
-    phs_d = ahb_list['position_angle'][index]
-    ns_d = ahb_list['sindex_disk'][index]
-    zs_d = ahb_list['redshift'][index]
-    sed_src_d = ahb_list['sed_disk_host'][index]
+    mag_src_d_u = df_inner['magnorm_disk_u'][index]
+    mag_src_d_g = df_inner['magnorm_disk_g'][index]
+    mag_src_d_r = df_inner['magnorm_disk_r'][index]
+    mag_src_d_i = df_inner['magnorm_disk_i'][index]
+    mag_src_d_z = df_inner['magnorm_disk_z'][index]
+    mag_src_d_y = df_inner['magnorm_disk_y'][index]
+    qs_d = df_inner['minor_axis_disk'][index]/df_inner['major_axis_disk'][index]
+    Reff_src_d = np.sqrt(df_inner['minor_axis_disk'][index]*df_inner['major_axis_disk'][index])
+    phs_d = df_inner['position_angle_x'][index]
+    ns_d = df_inner['sindex_disk'][index]
+    zs_d = df_inner['redshift_x'][index]
+    sed_src_d = df_inner['sed_disk_host'][index]
 
     dys2, dys1 = random_location(Reff_src_d, qs_d, phs_d, ns_d)
-    ys1 = hdu_list['snx'][idx].values - dys1    # needed more discussion
-    ys2 = hdu_list['sny'][idx].values - dys2    # needed more discussion
+    ys1 = df_inner['x_src'][index] - dys1    # needed more discussion
+    ys2 = df_inner['y_src'][index] - dys2    # needed more discussion
 
     srcsP_disk = {'ys1'          : ys1,
                   'ys2'          : ys2,
@@ -259,18 +259,18 @@ def create_cats_sne(index, hdu_list, ahb_list):
 
     #----------------------------------------------------------------------------
 
-    mag_src_b_u = ahb_list['magnorm_bulge_u'][index]
-    mag_src_b_g = ahb_list['magnorm_bulge_g'][index]
-    mag_src_b_r = ahb_list['magnorm_bulge_r'][index]
-    mag_src_b_i = ahb_list['magnorm_bulge_i'][index]
-    mag_src_b_z = ahb_list['magnorm_bulge_z'][index]
-    mag_src_b_y = ahb_list['magnorm_bulge_y'][index]
-    qs_b = ahb_list['minor_axis_bulge'][index]/ahb_list['major_axis_bulge'][index]
-    Reff_src_b = np.sqrt(ahb_list['minor_axis_bulge'][index]*ahb_list['major_axis_bulge'][index])
-    phs_b = ahb_list['position_angle'][index]
-    ns_b = ahb_list['sindex_bulge'][index]
-    zs_b = ahb_list['redshift'][index]
-    sed_src_b = ahb_list['sed_bulge_host'][index]
+    mag_src_b_u = df_inner['magnorm_bulge_u'][index]
+    mag_src_b_g = df_inner['magnorm_bulge_g'][index]
+    mag_src_b_r = df_inner['magnorm_bulge_r'][index]
+    mag_src_b_i = df_inner['magnorm_bulge_i'][index]
+    mag_src_b_z = df_inner['magnorm_bulge_z'][index]
+    mag_src_b_y = df_inner['magnorm_bulge_y'][index]
+    qs_b = df_inner['minor_axis_bulge'][index]/df_inner['major_axis_bulge'][index]
+    Reff_src_b = np.sqrt(df_inner['minor_axis_bulge'][index]*df_inner['major_axis_bulge'][index])
+    phs_b = df_inner['position_angle_x'][index]
+    ns_b = df_inner['sindex_bulge'][index]
+    zs_b = df_inner['redshift_x'][index]
+    sed_src_b = df_inner['sed_bulge_host'][index]
 
     srcsP_bulge = {'ys1'          : ys1,
                    'ys2'          : ys2,
@@ -379,7 +379,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
 
     os.makedirs(os.path.join(outdir,'sne_lensed_bulges'), exist_ok=True)
 
-    fits_limg_b = os.path.join(outdir,'sne_lensed_bulges/') + str(lens_P['UID_lens']) + "_" + str(rle) + "_" + str(vd) + "_" + str(zl) + "_" + str(zs) + "_" + str(lensed_mag_b_z) + "_" + str(lensed_mag_b_y) + "_bulge.fits"#\
+    fits_limg_b = os.path.join(outdir,'sne_lensed_bulges/') + str(lens_P['UID_lens']) + "_" + str(rle) + "_" + str(lensed_mag_b_u) + "_" + str(lensed_mag_b_g)+ "_" + str(lensed_mag_b_r)+ "_" + str(lensed_mag_b_i) + "_" + str(lensed_mag_b_z) + "_" + str(lensed_mag_b_y) + "_bulge.fits"#\
 
     pyfits.writeto(fits_limg_b, lensed_image_b.astype("float32"), overwrite=True)
 
@@ -389,7 +389,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
 
     os.makedirs(os.path.join(outdir,'sne_lensed_disks'), exist_ok=True)
 
-    fits_limg_d = os.path.join(outdir,'sne_lensed_disks/') + str(lens_P['UID_lens']) + "_" + str(rle) + "_" + str(lensed_mag_d_g)+ "_" + str(lensed_mag_d_r)+ "_" + str(lensed_mag_d_i)+ "_" + str(lensed_mag_d_z)+ "_" + str(lensed_mag_d_y)+ "_disk.fits" #\
+    fits_limg_d = os.path.join(outdir,'sne_lensed_disks/') + str(lens_P['UID_lens']) + "_" + str(rle) + "_" + str(lensed_mag_d_u) + "_" + str(lensed_mag_d_g)+ "_" + str(lensed_mag_d_r)+ "_" + str(lensed_mag_d_i)+ "_" + str(lensed_mag_d_z)+ "_" + str(lensed_mag_d_y)+ "_disk.fits" #\
 
     pyfits.writeto(fits_limg_d, lensed_image_d.astype("float32"), overwrite=True)
 

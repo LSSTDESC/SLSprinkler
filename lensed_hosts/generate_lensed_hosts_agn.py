@@ -12,7 +12,7 @@ import sqlite3 as sql
 import sys
 
 #data_dir = os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
-data_dir = 'data/'
+data_dir = 'data/new_files/'
 twinkles_data_dir = data_dir #os.path.join(os.environ['TWINKLES_DIR'], 'data')
 outdefault = 'outputs' #os.path.join(data_dir,'outputs')
 
@@ -34,18 +34,17 @@ def load_in_data_agn():
     ahd_purged: Data array for galaxy disks.  Includes prefix, uniqueId, raPhoSim, decPhoSim, phosimMagNorm
 
     """
-    #agn_host_bulge = pd.read_csv(os.path.join(twinkles_data_dir,
-    #                             'cosmoDC2_v1.1.4_bulge_agn_host.csv'))
-    #agn_host_disk = pd.read_csv(os.path.join(twinkles_data_dir,
-     #                           'cosmoDC2_v1.1.4_disk_agn_host.csv'))
-
     conn = sql.connect(os.path.join(data_dir,'host_truth.db'))
     agn_host = pd.read_sql_query("select * from agn_hosts;", conn)
+
+    conn2 = sql.connect(os.path.join(data_dir,'lens_truth.db'))
+    agn_lens = pd.read_sql_query("select * from agn_lens;", conn2)
 
     #idx = agn_host['image_number'] == 0
     ahb_purged = agn_host#[:][idx]
    
-    lens_list = pyfits.open(os.path.join(twinkles_data_dir, 'om10_qso_mock.fits'))
+    lens_list = agn_lens
+   # lens_list = pyfits.open(os.path.join(twinkles_data_dir, 'om10_qso_mock.fits'))
 
     return lens_list, ahb_purged 
 
@@ -69,35 +68,31 @@ def create_cats_agns(index, hdu_list, ahb_list):
     srcsP_bulge: Data array that includes parameters for galactic bulge
     srcsP_disk: Data array that includes parameters for galactic disk
     """
-    twinkles_ID = ahb_list['lens_cat_sys_id'][index]
-    
-    UID_lens = ahb_list['lens_cat_sys_id'][index]
-    Ra_lens = ahb_list['ra_lens'][index]
-    Dec_lens = ahb_list['dec_lens'][index]
-    idx = hdu_list[1].data['LENSID'] == twinkles_ID
 
-    #nrows1 = hdu_list[1].data.shape[0]
+    df_inner = pd.merge(ahb_list, hdu_list, on='lens_cat_sys_id', how='inner')
 
-    lid = hdu_list[1].data['LENSID'][idx][0]
-
-    #print('meow', lid, twinkles_ID)
-
+#    for col in df_inner.columns: 
+ #       print(col) 
+   
+    twinkles_ID = df_inner['lens_cat_sys_id'][index]
+    UID_lens = twinkles_ID
+    Ra_lens = df_inner['ra_lens_x'][index]
+    Dec_lens = df_inner['dec_lens_x'][index]
+    ys1 = df_inner['x_src'][index]
+    ys2 = df_inner['y_src'][index]
+    ximg = df_inner['x_img'][index]
+    yimg = df_inner['y_img'][index]
     xl1 = 0.0
     xl2 = 0.0
-    vd = hdu_list[1].data['VELDISP'][idx][0]
-    zd = hdu_list[1].data['ZLENS'][idx][0]
-    ql  = 1.0 - hdu_list[1].data['ELLIP'][idx][0]
-    phi= hdu_list[1].data['PHIE'][idx][0]
-
-    ys1 = hdu_list[1].data['XSRC'][idx][0]
-    ys2 = hdu_list[1].data['YSRC'][idx][0]
-
-    ext_shr = hdu_list[1].data['GAMMA'][idx][0]
-    ext_phi = hdu_list[1].data['PHIG'][idx][0]
-
-    ximg = hdu_list[1].data['XIMG'][idx][0]
-    yimg = hdu_list[1].data['YIMG'][idx][0]
-    
+    ra_lens_check = df_inner['ra_lens_y'][index]
+    dec_lens_check = df_inner['dec_lens_y'][index]
+    lid = df_inner['lens_cat_sys_id'][index] 
+    vd = df_inner['vel_disp_lenscat'][index] 
+    zd = df_inner['redshift_y'][index] 
+    ql = 1.0 - df_inner['ellip_lenscat'][index] 
+    phi = df_inner['position_angle_y'][index] 
+    ext_shr = df_inner['gamma_lenscat'][index]
+    ext_phi = df_inner['phig_lenscat'][index] 
 
     #----------------------------------------------------------------------------
     lens_cat = {'xl1'        : xl1,
@@ -119,19 +114,19 @@ def create_cats_agns(index, hdu_list, ahb_list):
     
     #----------------------------------------------------------------------------
 
-    mag_src_b_u = ahb_list['magnorm_bulge_u'][index]
-    mag_src_b_g = ahb_list['magnorm_bulge_g'][index]
-    mag_src_b_r = ahb_list['magnorm_bulge_r'][index]
-    mag_src_b_i = ahb_list['magnorm_bulge_i'][index]
-    mag_src_b_z = ahb_list['magnorm_bulge_z'][index]
-    mag_src_b_y = ahb_list['magnorm_bulge_y'][index]
+    mag_src_b_u = df_inner['magnorm_bulge_u'][index]
+    mag_src_b_g = df_inner['magnorm_bulge_g'][index]
+    mag_src_b_r = df_inner['magnorm_bulge_r'][index]
+    mag_src_b_i = df_inner['magnorm_bulge_i'][index]
+    mag_src_b_z = df_inner['magnorm_bulge_z'][index]
+    mag_src_b_y = df_inner['magnorm_bulge_y'][index]
 
-    qs_b = ahb_list['minor_axis_bulge'][index]/ahb_list['major_axis_bulge'][index]
-    Reff_src_b = np.sqrt(ahb_list['minor_axis_bulge'][index]*ahb_list['major_axis_bulge'][index])
-    phs_b = ahb_list['position_angle'][index]
-    ns_b = ahb_list['sindex_bulge'][index]
-    zs_b = ahb_list['redshift'][index]
-    sed_src_b = ahb_list['sed_bulge_host'][index]
+    qs_b = df_inner['minor_axis_bulge'][index]/df_inner['major_axis_bulge'][index]
+    Reff_src_b = np.sqrt(df_inner['minor_axis_bulge'][index]*df_inner['major_axis_bulge'][index])
+    phs_b = df_inner['position_angle_x'][index]
+    ns_b = df_inner['sindex_bulge'][index]
+    zs_b = df_inner['redshift_x'][index]
+    sed_src_b = df_inner['sed_bulge_host'][index]
     
     srcsP_bulge = {'ys1'          : ys1,
                    'ys2'          : ys2,
@@ -150,19 +145,19 @@ def create_cats_agns(index, hdu_list, ahb_list):
                    'components'   : 'bulge'}
     
     #----------------------------------------------------------------------------
-    mag_src_d_u = ahb_list['magnorm_disk_u'][index]
-    mag_src_d_g = ahb_list['magnorm_disk_g'][index]
-    mag_src_d_r = ahb_list['magnorm_disk_r'][index]
-    mag_src_d_i = ahb_list['magnorm_disk_i'][index]
-    mag_src_d_z = ahb_list['magnorm_disk_z'][index]
-    mag_src_d_y = ahb_list['magnorm_disk_y'][index]
+    mag_src_d_u = df_inner['magnorm_disk_u'][index]
+    mag_src_d_g = df_inner['magnorm_disk_g'][index]
+    mag_src_d_r = df_inner['magnorm_disk_r'][index]
+    mag_src_d_i = df_inner['magnorm_disk_i'][index]
+    mag_src_d_z = df_inner['magnorm_disk_z'][index]
+    mag_src_d_y = df_inner['magnorm_disk_y'][index]
 
-    qs_d = ahb_list['minor_axis_disk'][index]/ahb_list['major_axis_disk'][index]
-    Reff_src_d = np.sqrt(ahb_list['minor_axis_disk'][index]*ahb_list['major_axis_disk'][index])
-    phs_d = ahb_list['position_angle'][index]
-    ns_d = ahb_list['sindex_disk'][index]
-    zs_d = ahb_list['redshift'][index]
-    sed_src_d = ahb_list['sed_disk_host'][index]
+    qs_d = df_inner['minor_axis_disk'][index]/df_inner['major_axis_disk'][index]
+    Reff_src_d = np.sqrt(df_inner['minor_axis_disk'][index]*df_inner['major_axis_disk'][index])
+    phs_d = df_inner['position_angle_x'][index]
+    ns_d = df_inner['sindex_disk'][index]
+    zs_d = df_inner['redshift_x'][index]
+    sed_src_d = df_inner['sed_disk_host'][index]
 
     srcsP_disk = {'ys1'          : ys1,
                   'ys2'          : ys2,
