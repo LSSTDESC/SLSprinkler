@@ -1,10 +1,23 @@
+from builtins import range
+from builtins import object
+import argparse
+import linecache
+import math
+import os
+import gzip
+import numbers
+import multiprocessing
+import json as json
 import pandas as pd
 import numpy as np
-import argparse
+from lsst.sims.catalogs.decorators import register_method, compound
+from lsst.sims.catUtils.mixins import Variability
 from sqlalchemy import create_engine
 from lsst.sims.photUtils import Sed, BandpassDict
 from lsst.sims.catUtils.utils import ObservationMetaDataGenerator
-from desc.sims.GCRCatSimInterface import get_obs_md, ExtraGalacticVariabilityModels
+from desc.sims.GCRCatSimInterface import get_obs_md
+
+
 
 
 class lensedAgnCat():
@@ -24,11 +37,17 @@ class lensedAgnCat():
         for colname in agn_param_colnames:
             agn_params[colname] = self.truth_cat[colname]
 
+        # Include time delay.
+        obs_mjd_delay = obs_mjd - self.truth_cat['t_delay']
+        print(obs_mjd_delay)
+
         agn_simulator = ExtraGalacticVariabilityModels()
         agn_simulator._agn_threads = 1
         d_mag = agn_simulator.applyAgn([np.arange(len(self.truth_cat), dtype=int)],
-                                       agn_params, obs_mjd,
+                                       agn_params, obs_mjd_delay,
                                        redshift=self.truth_cat['redshift'])
+
+        print(d_mag)
 
         return
         
@@ -54,5 +73,5 @@ if __name__ == "__main__":
 
     for obsHistID in args.obs_ids:
         obs_md = get_obs_md(obs_gen, obsHistID, 2, dither=True)
-        lensed_agn_ic.calc_agn_dmags(obs_md.mjd.TAI+1.)
+        lensed_agn_ic.calc_agn_dmags(obs_md.mjd.TAI)
     
