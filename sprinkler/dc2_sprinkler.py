@@ -177,9 +177,13 @@ class DC2Sprinkler(BaseSprinkler):
             magnorm_lens_y = magnorm_lens[5]
             
             redshift = matched_sys_cat.iloc[i]['z_lens']
-            shear_1 = 0. #matched_hosts.iloc[i]['gamma_1']
-            shear_2 = 0. #matched_hosts.iloc[i]['gamma_2']
-            kappa = 0. #matched_hosts.iloc[i]['kappa']
+            shear_1_dc2 = matched_hosts.iloc[i]['gamma_1']
+            shear_2_dc2 = matched_hosts.iloc[i]['gamma_2']
+            kappa_dc2 = matched_hosts.iloc[i]['kappa']
+            gamma_lenscat = matched_sys_cat.iloc[i]['gamma']
+            phi_gamma_lenscat = matched_sys_cat.iloc[i]['phi_gamma']
+            shear_1_lenscat = gamma_lenscat * np.cos(2 * phi_gamma_lenscat)
+            shear_2_lenscat = gamma_lenscat * np.sin(2 * phi_gamma_lenscat)
             sindex_lens = 4
                 
             major_axis_lens = matched_sys_cat.iloc[i]['reff_lens'] / \
@@ -187,11 +191,15 @@ class DC2Sprinkler(BaseSprinkler):
             minor_axis_lens = matched_sys_cat.iloc[i]['reff_lens'] * \
                                 np.sqrt(1 - matched_sys_cat.iloc[i]['ellip_lens'])
             position_angle = matched_sys_cat.iloc[i]['phie_lens']*(-1.0)*np.pi/180.0
+            ellip_lens = matched_sys_cat.iloc[i]['ellip_lens']
+            phie_lens = matched_sys_cat.iloc[i]['phie_lens']
                 
             av_internal_lens = matched_sys_cat.iloc[i]['av_lens']
             rv_internal_lens = matched_sys_cat.iloc[i]['rv_lens']
             av_mw = matched_hosts.iloc[i]['av_mw']
             rv_mw = matched_hosts.iloc[i]['rv_mw']
+            
+            vel_disp_lens = matched_sys_cat.iloc[i]['vel_disp_lens']
 
             sed_lens = matched_sys_cat.iloc[i]['sed_lens']
                 
@@ -200,10 +208,12 @@ class DC2Sprinkler(BaseSprinkler):
             new_row = [unique_id, ra_lens, dec_lens,
                        magnorm_lens_u, magnorm_lens_g, magnorm_lens_r,
                        magnorm_lens_i, magnorm_lens_z, magnorm_lens_y,
-                       redshift, shear_1, shear_2, kappa, sindex_lens,
+                       redshift, shear_1_dc2, shear_2_dc2, kappa_dc2, 
+                       gamma_lenscat, phi_gamma_lenscat, 
+                       shear_1_lenscat, shear_2_lenscat, sindex_lens,
                        major_axis_lens, minor_axis_lens,
-                       position_angle, av_internal_lens,
-                       rv_internal_lens, av_mw, rv_mw, sed_lens,
+                       position_angle, ellip_lens, phie_lens, av_internal_lens,
+                       rv_internal_lens, av_mw, rv_mw, vel_disp_lens, sed_lens,
                        gal_id, cat_sys_id, new_sys_id]
                 
             new_entries.append(new_row)
@@ -212,12 +222,13 @@ class DC2Sprinkler(BaseSprinkler):
                                columns=['unique_id', 'ra_lens', 'dec_lens',
                                         'magnorm_lens_u', 'magnorm_lens_g', 'magnorm_lens_r',
                                         'magnorm_lens_i', 'magnorm_lens_z', 'magnorm_lens_y',
-                                        'redshift', 'shear_1', 'shear_2',
-                                        'kappa', 'sindex_lens',
-                                        'major_axis_lens',
-                                        'minor_axis_lens', 'position_angle',
-                                        'av_internal_lens', 'rv_internal_lens',
-                                        'av_mw', 'rv_mw', 
+                                        'redshift', 'shear_1_cosmodc2', 'shear_2_cosmodc2',
+                                        'kappa_cosmodc2', 'gamma_lenscat', 'phig_lenscat',
+                                        'shear_1_lenscat', 'shear_2_lenscat',
+                                        'sindex_lens', 'major_axis_lens',
+                                        'minor_axis_lens', 'position_angle', 'ellip_lenscat',
+                                        'phie_lenscat', 'av_internal_lens', 'rv_internal_lens',
+                                        'av_mw', 'rv_mw', 'vel_disp_lenscat',
                                         'sed_lens', 'original_gal_id', 
                                         'lens_cat_sys_id', 'dc2_sys_id'])
         
@@ -260,6 +271,11 @@ class DC2Sprinkler(BaseSprinkler):
                 ra_lens = matched_hosts.iloc[i]['ra']
                 dec_lens = matched_hosts.iloc[i]['dec']
                 
+                x_src = matched_sys_cat.iloc[i]['x_src']
+                y_src = matched_sys_cat.iloc[i]['y_src']
+                x_img = matched_sys_cat.iloc[i]['x_img'][j]
+                y_img = matched_sys_cat.iloc[i]['y_img'][j]
+                
                 delta_ra = np.radians(matched_sys_cat.iloc[i]['x_img'][j] / 3600.0)
                 delta_dec = np.radians(matched_sys_cat.iloc[i]['y_img'][j] / 3600.0)
                 ra_host = ra_lens + delta_ra/np.cos(dec_lens)
@@ -281,9 +297,9 @@ class DC2Sprinkler(BaseSprinkler):
                 magnorm_bulge_z = magnorm_bulge[4]
                 magnorm_bulge_y = magnorm_bulge[5]
                 redshift = matched_sys_cat.iloc[i]['z_src']
-                shear_1 = matched_hosts.iloc[i]['gamma_1']
-                shear_2 = matched_hosts.iloc[i]['gamma_2']
-                kappa = matched_hosts.iloc[i]['kappa']
+                shear_1 = 0. #matched_hosts.iloc[i]['gamma_1']
+                shear_2 = 0. #matched_hosts.iloc[i]['gamma_2']
+                kappa = 0. #matched_hosts.iloc[i]['kappa']
                 sindex_bulge = 4
                 sindex_disk = 1
                 
@@ -305,7 +321,8 @@ class DC2Sprinkler(BaseSprinkler):
                 
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
                 
-                new_row = [unique_id, ra_lens, dec_lens, ra_host, dec_host,
+                new_row = [unique_id, x_src, y_src, x_img, y_img,
+                           ra_lens, dec_lens, ra_host, dec_host,
                            magnorm_disk_u, magnorm_disk_g, magnorm_disk_r,
                            magnorm_disk_i, magnorm_disk_z, magnorm_disk_y,
                            magnorm_bulge_u, magnorm_bulge_g, magnorm_bulge_r,
@@ -319,7 +336,8 @@ class DC2Sprinkler(BaseSprinkler):
                 new_entries.append(new_row)
 
         host_df = pd.DataFrame(new_entries, 
-                               columns=['unique_id', 'ra_lens', 'dec_lens', 'ra_host', 'dec_host',
+                               columns=['unique_id', 'x_src', 'y_src', 'x_img', 'y_img',
+                                        'ra_lens', 'dec_lens', 'ra_host', 'dec_host',
                                         'magnorm_disk_u', 'magnorm_disk_g', 'magnorm_disk_r',
                                         'magnorm_disk_i', 'magnorm_disk_z', 'magnorm_disk_y',
                                         'magnorm_bulge_u', 'magnorm_bulge_g', 'magnorm_bulge_r',

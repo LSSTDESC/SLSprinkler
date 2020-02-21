@@ -18,15 +18,19 @@ def main(input_dir, agn_input, sne_input, dc2_input,
     agn_hosts, agn_systems, sne_hosts, sne_systems = \
         dc2_sprinkler.generate_matched_catalogs()
 
+    print('Writing AGN')
     agn_output_path = os.path.join(output_dir, agn_output)
     dc2_sprinkler.output_lensed_agn_truth(agn_hosts, agn_systems,
                                           agn_output_path, id_offset=0)
+    print('Writing SNe')
     sne_output_path = os.path.join(output_dir, sne_output)
     dc2_sprinkler.output_lensed_sne_truth(sne_hosts, sne_systems,
                                           sne_output_path, id_offset=2000)
+    print('Writing Lenses')
     lens_output_path = os.path.join(output_dir, lens_output)
     dc2_sprinkler.output_lens_galaxy_truth(agn_hosts, agn_systems, sne_hosts,
                                            sne_systems, lens_output_path)
+    print('Writing Hosts')
     host_output_path = os.path.join(output_dir, host_output)
     dc2_sprinkler.output_host_galaxy_truth(agn_hosts, agn_systems, sne_hosts,
                                            sne_systems, host_output_path)

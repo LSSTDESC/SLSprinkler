@@ -12,12 +12,14 @@ class testDC2Sprinkler(unittest.TestCase):
         cls.gl_agn_cat = '../data/twinkles_lenses_cosmoDC2_v1.1.4.fits'
         cls.gl_sne_cat = '../data/glsne_test.h5'
         cls.gal_cat = '../data/test_ddf.pkl'
+        cls.density_file_dir = '../data'
 
         cls.glagn_reader = OM10Reader
         cls.glsne_reader = GoldsteinSNeCatReader
         cls.gal_reader = DC2Reader
 
-        cls.sl_sprinkler = DC2Sprinkler(cls.gl_agn_cat, cls.glagn_reader,
+        cls.sl_sprinkler = DC2Sprinkler(cls.density_file_dir,
+                                        cls.gl_agn_cat, cls.glagn_reader,
                                         cls.gl_sne_cat, cls.glsne_reader,
                                         cls.gal_cat, cls.gal_reader)
 
