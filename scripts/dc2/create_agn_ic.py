@@ -72,24 +72,28 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
                 'Lensed AGN Instance Catalog Generator')
     parser.add_argument('--obs_db', type=str, help='path to the Opsim db')
-    parser.add_argument('--obs_ids', type=int, nargs='+', default=None,
-                        help='obsHistID to generate InstanceCatalog for (a list)')
+    parser.add_argument('--obs_id', type=int, default=None,
+                        help='obsHistID to generate InstanceCatalog for')
     parser.add_argument('--agn_truth_cat', type=str,
                         help='path to lensed AGN truth catalog')
+    parser.add_argument('--file_out', type=str,
+                        help='filename of instance catalog written')
 
     args = parser.parse_args()
 
-    # obs_gen = ObservationMetaDataGenerator(database=args.obs_db,
-    #                                        driver='sqlite')
+    obs_gen = ObservationMetaDataGenerator(database=args.obs_db,
+                                           driver='sqlite')
 
     agn_truth_db = create_engine('sqlite:///%s' % args.agn_truth_cat, echo=False)
     agn_truth_cat = pd.read_sql_table('lensed_agn', agn_truth_db)
     lensed_agn_ic = lensedAgnCat(agn_truth_cat)
 
-    for obsHistID in args.obs_ids:
-        # obs_md = get_obs_md(obs_gen, obsHistID, 2, dither=True)
-        # lensed_agn_ic.calc_agn_dmags(obs_md.mjd.TAI)
-        obs_filter = 'g'
-        d_mag = lensed_agn_ic.calc_agn_dmags(61000.0, obs_filter)
-        lensed_agn_ic.output_instance_catalog(d_mag, 'test.out')
+    obs_md = get_obs_md(obs_gen, args.obs_id, 2, dither=True)
+    obs_time = obs_md.mjd.TAI
+    obs_filter = obs_md.bandpass
+    print('Writing Instance Catalog for Visit: %i at MJD: %f in Bandpass: %s' % (args.obs_id,
+                                                                                 obs_time,
+                                                                                 obs_filter))
+    d_mag = lensed_agn_ic.calc_agn_dmags(obs_time, obs_filter)
+    lensed_agn_ic.output_instance_catalog(d_mag, args.file_out)
     
