@@ -111,18 +111,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # obs_gen = ObservationMetaDataGenerator(database=args.obs_db,
-    #                                        driver='sqlite')
+    obs_gen = ObservationMetaDataGenerator(database=args.obs_db,
+                                           driver='sqlite')
 
     sne_truth_db = create_engine('sqlite:///%s' % args.sne_truth_cat, echo=False)
     sne_truth_cat = pd.read_sql_table('lensed_sne', sne_truth_db)
-    sne_truth_cat['av_mw'] = 0.1
-    sne_truth_cat['rv_mw'] = 3.1
     lensed_sne_ic = lensedSneCat(sne_truth_cat, args.sed_out)
 
-    # obs_md = get_obs_md(obs_gen, args.obs_id, 2, dither=True)
-    obs_time = 60733.#obs_md.mjd.TAI
-    obs_filter = 'g'#obs_md.bandpass
+    obs_md = get_obs_md(obs_gen, args.obs_id, 2, dither=True)
+    obs_time = obs_md.mjd.TAI
+    obs_filter = obs_md.bandpass
     print('Writing Instance Catalog for Visit: %i at MJD: %f in Bandpass: %s' % (args.obs_id,
                                                                                  obs_time,
                                                                                  obs_filter))

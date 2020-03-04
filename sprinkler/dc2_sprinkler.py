@@ -395,6 +395,9 @@ class DC2Sprinkler(BaseSprinkler):
                 agn_sf_i = agn_var_param['agn_sf_i']
                 agn_sf_z = agn_var_param['agn_sf_z']
                 agn_sf_y = agn_var_param['agn_sf_y']
+                
+                av_mw = matched_hosts.iloc[i]['av_mw']
+                rv_mw = matched_hosts.iloc[i]['rv_mw']
 
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
 
@@ -403,7 +406,8 @@ class DC2Sprinkler(BaseSprinkler):
                            seed, agn_tau_u, agn_tau_u, agn_tau_u,
                            agn_tau_u, agn_tau_u, agn_tau_u,
                            agn_sf_u, agn_sf_g, agn_sf_r, 
-                           agn_sf_i, agn_sf_z, agn_sf_y, new_sys_id,
+                           agn_sf_i, agn_sf_z, agn_sf_y, 
+                           av_mw, rv_mw, new_sys_id,
                            cat_sys_id, image_number]
                 
                 new_entries.append(new_row)
@@ -414,7 +418,8 @@ class DC2Sprinkler(BaseSprinkler):
                                        'seed', 'agn_tau_u', 'agn_tau_g', 'agn_tau_r',
                                        'agn_tau_i', 'agn_tau_z', 'agn_tau_y',
                                        'agn_sf_u', 'agn_sf_g', 'agn_sf_r',
-                                       'agn_sf_i', 'agn_sf_z', 'agn_sf_y', 'dc2_sys_id',
+                                       'agn_sf_i', 'agn_sf_z', 'agn_sf_y', 
+                                       'av_mw', 'rv_mw', 'dc2_sys_id',
                                        'lens_cat_sys_id', 'image_number'])
 
         engine = create_engine('sqlite:///%s' % out_file, echo=False)
@@ -454,12 +459,16 @@ class DC2Sprinkler(BaseSprinkler):
                 host_type = matched_sys_cat.iloc[i]['host_type']
 
                 redshift = matched_sys_cat.iloc[i]['z_src']
+                
+                av_mw = matched_hosts.iloc[i]['av_mw']
+                rv_mw = matched_hosts.iloc[i]['rv_mw']
 
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
 
                 new_row = [gal_unique_id, gal_unique_id, ra, dec, t0,
                            t_delay, mb, mag, x0, x1, c, host_type,
-                           redshift, new_sys_id, cat_sys_id, image_number]
+                           redshift, av_mw, rv_mw,
+                           new_sys_id, cat_sys_id, image_number]
                 
                 new_entries.append(new_row)
 
@@ -467,6 +476,7 @@ class DC2Sprinkler(BaseSprinkler):
                               columns=['unique_id', 'gal_unq_id', 'ra', 'dec',
                                        't0', 't_delay', 'MB', 'magnification',
                                        'x0', 'x1', 'c', 'host_type', 'redshift',
+                                       'av_mw', 'rv_mw',
                                        'dc2_sys_id', 'lens_cat_sys_id', 
                                        'image_number'])
 
