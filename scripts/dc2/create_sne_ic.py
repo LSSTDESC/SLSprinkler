@@ -31,6 +31,10 @@ class lensedSneCat():
         wavelen_min = 30.
         wavelen_step = 0.1
 
+        sn_magnorm_list = []
+        sn_sed_names = []
+        add_to_cat_list = []
+
         for idx in range(len(self.truth_cat)):
 
             sn_param_dict = copy.deepcopy(self.sn_obj.SNstate)
@@ -52,22 +56,44 @@ class lensedSneCat():
             flux_500 = sn_sed_obj.flambda[np.where(sn_sed_obj.wavelen >= 499.99)][0]
 
             if flux_500 > 0.:
-                add_to_cat = True
                 sn_magnorm = current_sn_obj.catsimBandMag(self.imSimBand, sed_mjd)
                 sn_name = None
                 if self.write_sn_sed:
-                    sn_name = 'specFileGLSN_%i_%i_%.4f.txt' % (self.truth_cat['lens_cat_sys_id'].iloc[idx],
+                    sn_name = 'specFileGLSN_%i_%i_%.4f.txt' % (self.truth_cat['dc2_sys_id'].iloc[idx],
                                                                self.truth_cat['image_number'].iloc[idx],
-                                                               sed_mjd)
+                                                               obs_mjd)
                     sed_filename = '%s/%s' % (self.sed_path, sn_name)
                     sn_sed_obj.writeSED(sed_filename)
                     with open(sed_filename, 'rb') as f_in, gzip.open(str(sed_filename + '.gz'), 'wb') as f_out:
                         shutil.copyfileobj(f_in, f_out)
                     os.remove(sed_filename)
 
-                print(sn_magnorm)
+                sn_magnorm_list.append(sn_magnorm)
+                sn_sed_names.append(sed_filename)
+                add_to_cat_list.append(idx)
 
-        return sn_magnorm
+        return add_to_cat_list, np.array(sn_magnorm_list), sn_sed_names
+
+    def output_instance_catalog(self, add_to_cat_idx, sne_magnorms, sne_sed_names, filename):
+
+        lensed_mags = sne_magnorms - \
+            2.5*np.log10(np.abs(self.truth_cat['magnification'].iloc[add_to_cat_idx].values))
+
+        with open(filename, 'w') as f:
+            for truth_cat_idx, output_idx in zip(add_to_cat_idx, np.arange(len(add_to_cat_idx))):
+
+                f.write('object %s %f %f %f %s %f 0 0 0 0 0 point none CCM %f %f\n' \
+                    % ('GLSN_%i_%i' % (self.truth_cat['dc2_sys_id'].iloc[truth_cat_idx],
+                                       self.truth_cat['image_number'].iloc[truth_cat_idx]),
+                       self.truth_cat['ra'].iloc[truth_cat_idx],
+                       self.truth_cat['dec'].iloc[truth_cat_idx],
+                       lensed_mags[output_idx],
+                       sne_sed_names[output_idx],
+                       self.truth_cat['redshift'].iloc[truth_cat_idx],
+                       self.truth_cat['av_mw'].iloc[truth_cat_idx],
+                       self.truth_cat['rv_mw'].iloc[truth_cat_idx]))
+
+        return
 
 if __name__ == "__main__":
 
@@ -90,6 +116,8 @@ if __name__ == "__main__":
 
     sne_truth_db = create_engine('sqlite:///%s' % args.sne_truth_cat, echo=False)
     sne_truth_cat = pd.read_sql_table('lensed_sne', sne_truth_db)
+    sne_truth_cat['av_mw'] = 0.1
+    sne_truth_cat['rv_mw'] = 3.1
     lensed_sne_ic = lensedSneCat(sne_truth_cat, args.sed_out)
 
     # obs_md = get_obs_md(obs_gen, args.obs_id, 2, dither=True)
@@ -98,5 +126,6 @@ if __name__ == "__main__":
     print('Writing Instance Catalog for Visit: %i at MJD: %f in Bandpass: %s' % (args.obs_id,
                                                                                  obs_time,
                                                                                  obs_filter))
-    d_mag = lensed_sne_ic.calc_sne_mags(obs_time, obs_filter)
-    lensed_agn_ic.output_instance_catalog(d_mag, args.file_out)
+    add_to_cat_idx, sne_magnorms, sne_sed_names = lensed_sne_ic.calc_sne_mags(obs_time, obs_filter)
+    lensed_sne_ic.output_instance_catalog(add_to_cat_idx, sne_magnorms,
+                                          sne_sed_names, args.file_out)
