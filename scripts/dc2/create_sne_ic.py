@@ -25,6 +25,9 @@ class lensedSneCat():
         self.sed_path = sed_path
         self.write_sn_sed = write_sn_sed
 
+        if not os.path.exists(self.sed_path):
+            os.mkdir(self.sed_path)
+
     def calc_sne_mags(self, obs_mjd, obs_filter):
 
         wavelen_max = 1800.
