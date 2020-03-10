@@ -12,7 +12,7 @@ import sqlite3 as sql
 import sys
 
 #data_dir = os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
-data_dir = 'data/new_files/'
+data_dir = 'data/'
 twinkles_data_dir = data_dir #os.path.join(os.environ['TWINKLES_DIR'], 'data')
 outdefault = 'outputs' #os.path.join(data_dir,'outputs')
 
@@ -40,8 +40,8 @@ def load_in_data_agn():
     conn2 = sql.connect(os.path.join(data_dir,'lens_truth.db'))
     agn_lens = pd.read_sql_query("select * from agn_lens;", conn2)
 
-    #idx = agn_host['image_number'] == 0
-    ahb_purged = agn_host#[:][idx]
+    idx = agn_host['image_number'] == 0
+    ahb_purged = agn_host[idx]
    
     lens_list = agn_lens
    # lens_list = pyfits.open(os.path.join(twinkles_data_dir, 'om10_qso_mock.fits'))
@@ -71,7 +71,7 @@ def create_cats_agns(index, hdu_list, ahb_list):
 
     df_inner = pd.merge(ahb_list, hdu_list, on='lens_cat_sys_id', how='inner')
 
-#    for col in df_inner.columns: 
+    #    for col in df_inner.columns: 
  #       print(col) 
    
     twinkles_ID = df_inner['lens_cat_sys_id'][index]
@@ -267,7 +267,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
 
     os.makedirs(os.path.join(outdir,'agn_lensed_bulges'), exist_ok=True)
 
-    fits_limg_b = os.path.join(outdir,'agn_lensed_bulges/') + str(lens_P['UID_lens']) + "_" + str(rle)+ "_" + str(lensed_mag_b_u)+"_"+str(lensed_mag_b_g)+"_"+str(lensed_mag_b_r)+"_"+str(lensed_mag_b_i)+"_"+str(lensed_mag_b_z)+"_"+str(lensed_mag_b_y)+ "_bulge.fits" 
+    fits_limg_b = os.path.join(outdir,'agn_lensed_bulges/') + str(lens_P['UID_lens']) +  "_" + str(lensed_mag_b_u)+"_"+str(lensed_mag_b_g)+"_"+str(lensed_mag_b_r)+"_"+str(lensed_mag_b_i)+"_"+str(lensed_mag_b_z)+"_"+str(lensed_mag_b_y)+ "_bulge.fits" 
     #fits_limg_b = os.path.join(outdir,'agn_lensed_bulges/') + str(lens_P['UID_lens']) + "_" + str(xlc1)+ "_" + str(xlc2)+"_"+str(vd)+"_"+str(zl)+"_"+str(zs)+"_"+str(rle)+"_"+str(ql)+"_"+str(le)+"_"+str(phl)+"_"+str(eshr)+"_"+str(eang)+ "_bulge.fits" 
 
     pyfits.writeto(fits_limg_b, lensed_image_b.astype("float32"), overwrite=True)
@@ -279,7 +279,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
     os.makedirs(os.path.join(outdir,'agn_lensed_disks'), exist_ok=True)
 
    # fits_limg_d = os.path.join(outdir,'agn_lensed_disks/') + str(lens_P['UID_lens']) + "_" +str(rle)+ "_" + str(lensed_mag_d_u)+"_" +str(lensed_mag_d_g)+"_"+str(lensed_mag_d_r)+"_"+str(lensed_mag_d_i)+"_"+str(lensed_mag_d_z)+"_"+str(lensed_mag_d_y)+ "_disk.fits" 
-    fits_limg_d = os.path.join(outdir,'agn_lensed_disks/') + str(lens_P['UID_lens']) + "_" +str(rle)+ "_" + str(lensed_mag_d_u)+"_" +str(lensed_mag_d_g)+"_"+str(lensed_mag_d_r)+"_"+str(lensed_mag_d_i)+"_"+str(lensed_mag_d_z)+"_"+str(lensed_mag_d_y)+ "_disk.fits" 
+    fits_limg_d = os.path.join(outdir,'agn_lensed_disks/') + str(lens_P['UID_lens']) + "_" + str(lensed_mag_d_u)+"_" +str(lensed_mag_d_g)+"_"+str(lensed_mag_d_r)+"_"+str(lensed_mag_d_i)+"_"+str(lensed_mag_d_z)+"_"+str(lensed_mag_d_y)+ "_disk.fits" 
  
 
     pyfits.writeto(fits_limg_d, lensed_image_d.astype("float32"), overwrite=True)
@@ -300,9 +300,9 @@ if __name__ == '__main__':
 
     message_row = 0
     message_freq = 50
-    for i, row in ahb.iterrows():
+    for i, row in hdulist.iterrows():
         if i >= message_row:
-            print ("working on system ", i , "of", max(ahb.index))
+            print ("working on system ", i , "of", max(hdulist.index))
             message_row += message_freq
         lensP, srcPb, srcPd = create_cats_agns(i, hdulist, ahb)
         load_in_data_agn()
