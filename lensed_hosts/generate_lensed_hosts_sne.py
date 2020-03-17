@@ -11,15 +11,19 @@ import scipy.special as ss
 import om10_lensing_equations as ole
 import sqlite3 as sql
 
-data_dir = 'data/' #os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
-twinkles_data_dir = data_dir #os.path.join(os.environ['TWINKLES_DIR'], 'data')
-outdefault = 'outputs' #os.path.join(data_dir,'outputs')
+
+datadefault = 'truth_tables'
+outdefault = 'outputs' 
 
 parser = argparse.ArgumentParser(description='The location of the desired output directory')
-parser.add_argument("--outdir", dest='outdir1', type=str, default = outdefault,
+parser.add_argument("--datadir", dest='datadir', type=str, default = datadefault,
+                    help='Location of input truth tables')
+parser.add_argument("--outdir", dest='outdir', type=str, default = outdefault,
                     help='Output location for FITS stamps')
 args = parser.parse_args()
-outdir = args.outdir1
+datadir = args.datadir
+outdir = args.outdir
+
 
 def random_location(Reff_src, qs, phs, ns):
     """Sample a random (x, y) location from the surface brightness
@@ -150,10 +154,10 @@ def load_in_data_sne():
 
     """
     
-    conn = sql.connect(os.path.join(data_dir,'host_truth.db'))
+    conn = sql.connect(os.path.join(datadir,'host_truth.db'))
     sne_host = pd.read_sql_query("select * from sne_hosts;", conn)
 
-    conn2 = sql.connect(os.path.join(data_dir,'lens_truth.db'))
+    conn2 = sql.connect(os.path.join(datadir,'lens_truth.db'))
     sne_lens = pd.read_sql_query("select * from sne_lens;", conn2)
 
     idx = sne_host['image_number'] == 0
@@ -393,37 +397,6 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
     pyfits.writeto(fits_limg_d, lensed_image_d.astype("float32"), overwrite=True)
 
     return 0
-
-
-def cross_check_with_lensed_sne(twinkles_ID):
-    """ Stack the lensed hosts and lensed points to verify the calculation
-     and make some plots.
-    Parameters:
-    -----------
-    twinkles_ID: int
-        ID that identifies a particular system
-
-    Returns:
-    -----------
-    ximgs: nimg-element data array containing position of lensed host and image number
-    yimgs: nimg-element data array containing position of lensed points and image number
-
-    """
-    sne_lens_cats = pd.read_csv(os.path.join(twinkles_data_dir,
-                                             'cosmoDC2_v1.1.4_sne_cat.csv'))
-
-    idx = sne_lens_cats['twinkles_sysno'] == twinkles_ID
-
-    imgnos = sne_lens_cats['imno'][idx]
-    nimgs = len(sne_lens_cats['imno'][idx])
-
-    ximgs = np.zeros(nimgs, dtype=float)
-    yimgs = np.zeros(nimgs, dtype=float)
-
-    ximgs[:nimgs] = sne_lens_cats['x'][idx].values
-    yimgs[:nimgs] = sne_lens_cats['y'][idx].values
-
-    return ximgs, yimgs
 
 if __name__ == '__main__':
 

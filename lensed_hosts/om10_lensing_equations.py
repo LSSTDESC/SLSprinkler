@@ -13,9 +13,6 @@ vc = 2.998e5 #km/s
 G = 4.3011790220362e-09 # Mpc/h (Msun/h)^-1 (km/s)^2
 apr =  206264.8        # 1/1^{''}
 
-#data_dir = os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
-data_dir = 'data'
-
 def Dc(z):
     res = p15.comoving_distance(z).value*p15.h
     return res
@@ -66,8 +63,7 @@ def re_sv(sigmav, z1, z2):
 #--------------------------------------------------------------------
 
 def e2le(e_in):
-
-    e_tmp,lef_tmp = np.loadtxt(os.path.join(data_dir, "ell_lef.dat"),
+    e_tmp,lef_tmp = np.loadtxt("SLSprinkler/lensed_hosts/ell_lef.dat",
                                comments='#',usecols=(0,1),unpack=True)
     f1 = interp1d(e_tmp, lef_tmp, kind='linear')
 

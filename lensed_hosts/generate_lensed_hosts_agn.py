@@ -11,16 +11,18 @@ import om10_lensing_equations as ole
 import sqlite3 as sql
 import sys
 
-#data_dir = os.path.join(os.environ['SIMS_GCRCATSIMINTERFACE_DIR'], 'data')
-data_dir = 'data/'
-twinkles_data_dir = data_dir #os.path.join(os.environ['TWINKLES_DIR'], 'data')
-outdefault = 'outputs' #os.path.join(data_dir,'outputs')
+datadefault = 'truth_tables'
+outdefault = 'outputs' 
 
-parser = argparse.ArgumentParser(description='The location of the desired output directory')
-parser.add_argument("--outdir", dest='outdir1', type=str, default = outdefault,
+parser = argparse.ArgumentParser(description='The location of the data directory')
+parser.add_argument("--datadir", dest='datadir', type=str, default = datadefault,
+                    help='Location of data directory (containing truth tables)')
+parser.add_argument("--outdir", dest='outdir', type=str, default = outdefault,
                     help='Output location for FITS stamps')
 args = parser.parse_args()
-outdir = args.outdir1
+datadir = args.datadir
+outdir = args.outdir
+
 
 def load_in_data_agn():
 
@@ -34,10 +36,10 @@ def load_in_data_agn():
     ahd_purged: Data array for galaxy disks.  Includes prefix, uniqueId, raPhoSim, decPhoSim, phosimMagNorm
 
     """
-    conn = sql.connect(os.path.join(data_dir,'host_truth.db'))
+    conn = sql.connect(os.path.join(datadir,'host_truth.db'))
     agn_host = pd.read_sql_query("select * from agn_hosts;", conn)
 
-    conn2 = sql.connect(os.path.join(data_dir,'lens_truth.db'))
+    conn2 = sql.connect(os.path.join(datadir,'lens_truth.db'))
     agn_lens = pd.read_sql_query("select * from agn_lens;", conn2)
 
     idx = agn_host['image_number'] == 0

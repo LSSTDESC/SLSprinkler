@@ -1,8 +1,15 @@
 To generate the FITS files of the lensed hosts, you will need to run the followi
 ng commands only once:
 
-python lensed_hosts/generate_lensed_hosts_agn.py
-python lensed_hosts/generate_lensed_hosts_sne.py
+git clone https://github.com/mpwiesner/truth_tables.git (This will download the truth tables.  If you already have truth tables, then skip this.)
+mv truth_tables SLSprinkler/lensed_hosts
+
+python SLSprinkler/lensed_hosts/generate_lensed_hosts_agn.py --outdir=outputs --datadir=truth_tables
+python SLSprinkler/lensed_hosts/generate_lensed_hosts_sne.py --outdir=outputs --datadir=truth_tables
+
+--outdir and --datadir are optional to specify locations of output FITS files and location of input truth tables
+They default to 'outputs' and 'truth_tables'
+Note that the ell_lef.dat file is kept in SLSprinkler/lensed_hosts/data directory.  This is hard-coded in om10_lensing_equations.py.
 
 
 The default location of the output is SLSprinkler/lensed_hosts/outputs. Ther
