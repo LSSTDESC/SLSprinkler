@@ -1,19 +1,28 @@
 To generate the FITS files of the lensed hosts, you will need to run the followi
 ng commands only once:
 
-git clone https://github.com/mpwiesner/truth_tables.git (This will download the truth tables.  If you already have truth tables, then skip this.)
-mv truth_tables SLSprinkler/lensed_hosts
+Run this command inside the SLSprinkler directory (or move the resulting folder to that location):
 
-python SLSprinkler/lensed_hosts/generate_lensed_hosts_agn.py --outdir=outputs --datadir=truth_tables
-python SLSprinkler/lensed_hosts/generate_lensed_hosts_sne.py --outdir=outputs --datadir=truth_tables
+git clone https://github.com/mpwiesner/truth_tables.git 
 
---outdir and --datadir are optional to specify locations of output FITS files and location of input truth tables
+(This will download the truth tables.  If you already have truth tables, then skip this.)
+
+If you run in the SLSprinkler directory, then do this:
+
+python lensed_hosts/generate_lensed_hosts_agn.py  
+python lensed_hosts/generate_lensed_hosts_sne.py  
+
+The FITS stamps will appear in a directory called 'outputs'
+
+If you run the programs from a different directory, then do this:
+
+python <PATH TO THIS DIRECTORY>/SLSprinkler/lensed_hosts/generate_lensed_hosts_agn.py --outdir=outputs --datadir=<PATH TO THIS DIRECTORY>/SLSprinkler/truth_tables
+python <PATH TO THIS DIRECTORY>/SLSprinkler/lensed_hosts/generate_lensed_hosts_sne.py --outdir=outputs --datadir=<PATH TO THIS DIRECTORY>/SLSprinkler/truth_tables
+
+--outdir and --datadir specify locations of output FITS files and location of input truth tables (including 'ell_lef.dat' which is used by 'om10_lensing_equations.py'). 
 They default to 'outputs' and 'truth_tables'
-Note that the ell_lef.dat file is kept in SLSprinkler/lensed_hosts/data directory.  This is hard-coded in om10_lensing_equations.py.
 
-
-The default location of the output is SLSprinkler/lensed_hosts/outputs. Ther
-e are 4 subdirectories, called (by default):
+The default location of the output is SLSprinkler/lensed_hosts/outputs. There are 4 subdirectories, called (by default):
 "SLSprinkler/lensed_hosts/outputs/agn_lensed_bulges"
 "SLSprinkler/lensed_hosts/outputs/agn_lensed_disks"
 "SLSprinkler/lensed_hosts/outputs/sne_lensed_bulges"

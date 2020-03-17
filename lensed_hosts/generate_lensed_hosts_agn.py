@@ -19,6 +19,7 @@ parser.add_argument("--datadir", dest='datadir', type=str, default = datadefault
                     help='Location of data directory (containing truth tables)')
 parser.add_argument("--outdir", dest='outdir', type=str, default = outdefault,
                     help='Output location for FITS stamps')
+
 args = parser.parse_args()
 datadir = args.datadir
 outdir = args.outdir
@@ -251,7 +252,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
     zs   = srcP_b['zs']                 # redshift of the source
     rle  = ole.re_sv(vd, zl, zs)        # Einstein radius of lens, arcseconds.
     ql   = lens_P['ql']                 # axis ratio b/a
-    le   = ole.e2le(1.0 - ql)           # scale factor due to projection of ellipsoid
+    le   = ole.e2le(1.0 - ql, datadir)           # scale factor due to projection of ellipsoid
     phl  = lens_P['phl']                # position angle of the lens, degree
     eshr = lens_P['gamma']              # external shear
     eang = lens_P['phg']                # position angle of external shear
