@@ -23,10 +23,10 @@ python $gcr_catsim_dir/bin.src/generateInstCat.py \
     --fov 0.05 --ids $visit_id --agn_threads 2 --out_dir $out_dir
 
 python create_agn_ic.py \
-    --obs_db /global/projecta/projectdirs/lsst/groups/SSim/DC2/DDF_cadences/ddf_cadence.db \
+    --obs_db /global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db \
     --obs_id $visit_id --agn_truth_cat $agn_truth_cat --file_out $out_dir/lensed_agn_$visit_id.txt
 
 python create_sne_ic.py \
-    --obs_db /global/projecta/projectdirs/lsst/groups/SSim/DC2/DDF_cadences/ddf_cadence.db \
+    --obs_db /global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db \
     --obs_id $visit_id --sne_truth_cat $sne_truth_cat --file_out $out_dir/lensed_sne_$visit_id.txt \
     --sed_out $out_dir/glsne_sed
