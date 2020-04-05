@@ -16,17 +16,20 @@ from desc.sims.GCRCatSimInterface import get_obs_md
 
 class lensedSneCat():
 
-    def __init__(self, truth_cat, sed_path, write_sn_sed=True):
+    def __init__(self, truth_cat, out_dir, cat_file_name,
+                 sed_folder_name, write_sn_sed=True):
 
         self.truth_cat = truth_cat
         self.sn_obj = SNObject(0., 0.)
         self.imSimBand = Bandpass()
         self.imSimBand.imsimBandpass()
-        self.sed_path = sed_path
+        self.sed_folder_name = sed_folder_name
+        self.out_dir = out_dir
+        self.sed_dir = os.path.join(out_dir, sed_folder_name)
         self.write_sn_sed = write_sn_sed
 
-        if not os.path.exists(self.sed_path):
-            os.mkdir(self.sed_path)
+        if not os.path.exists(self.sed_dir):
+            os.mkdir(self.sed_dir)
 
     def calc_sne_mags(self, obs_mjd, obs_filter):
 
@@ -62,27 +65,30 @@ class lensedSneCat():
                 sn_magnorm = current_sn_obj.catsimBandMag(self.imSimBand, sed_mjd)
                 sn_name = None
                 if self.write_sn_sed:
-                    sn_name = 'specFileGLSN_%i_%i_%.4f.txt' % (self.truth_cat['dc2_sys_id'].iloc[idx],
-                                                               self.truth_cat['image_number'].iloc[idx],
-                                                               obs_mjd)
-                    sed_filename = '%s/%s' % (self.sed_path, sn_name)
+                    sn_name = '%s/specFileGLSN_%i_%i_%.4f.txt' % (self.sed_folder_name,
+                                                                  self.truth_cat['dc2_sys_id'].iloc[idx],
+                                                                  self.truth_cat['image_number'].iloc[idx],
+                                                                  obs_mjd)
+                    sed_filename = '%s/%s' % (self.out_dir, sn_name)
                     sn_sed_obj.writeSED(sed_filename)
                     with open(sed_filename, 'rb') as f_in, gzip.open(str(sed_filename + '.gz'), 'wb') as f_out:
                         shutil.copyfileobj(f_in, f_out)
                     os.remove(sed_filename)
 
                 sn_magnorm_list.append(sn_magnorm)
-                sn_sed_names.append(sed_filename)
+                sn_sed_names.append(sn_name + '.gz')
                 add_to_cat_list.append(idx)
 
         return add_to_cat_list, np.array(sn_magnorm_list), sn_sed_names
 
     def output_instance_catalog(self, add_to_cat_idx, sne_magnorms, sne_sed_names, filename):
 
+        full_cat_name = os.path.join(self.out_dir, filename)
+
         lensed_mags = sne_magnorms - \
             2.5*np.log10(np.abs(self.truth_cat['magnification'].iloc[add_to_cat_idx].values))
 
-        with open(filename, 'w') as f:
+        with open(full_cat_name, 'w') as f:
             for truth_cat_idx, output_idx in zip(add_to_cat_idx, np.arange(len(add_to_cat_idx))):
 
                 f.write('object %s %f %f %f %s %f 0 0 0 0 0 point none CCM %f %f\n' \
@@ -107,10 +113,12 @@ if __name__ == "__main__":
                         help='obsHistID to generate InstanceCatalog for')
     parser.add_argument('--sne_truth_cat', type=str,
                         help='path to lensed AGN truth catalog')
-    parser.add_argument('--file_out', type=str,
+    parser.add_argument('--output_dir', type=str,
+                        help='output directory for catalog and sed folder')
+    parser.add_argument('--cat_file_name', type=str,
                         help='filename of instance catalog written')
-    parser.add_argument('--sed_out', type=str,
-                        help='directory to put SNe SEDs')
+    parser.add_argument('--sed_folder', type=str,
+                        help='directory to put SNe SEDs. Will appear in output_dir.')
 
     args = parser.parse_args()
 
@@ -119,7 +127,8 @@ if __name__ == "__main__":
 
     sne_truth_db = create_engine('sqlite:///%s' % args.sne_truth_cat, echo=False)
     sne_truth_cat = pd.read_sql_table('lensed_sne', sne_truth_db)
-    lensed_sne_ic = lensedSneCat(sne_truth_cat, args.sed_out)
+    lensed_sne_ic = lensedSneCat(sne_truth_cat, args.output_dir,
+                                 args.cat_file_name, args.sed_folder)
 
     obs_md = get_obs_md(obs_gen, args.obs_id, 2, dither=True)
     obs_time = obs_md.mjd.TAI
@@ -129,4 +138,4 @@ if __name__ == "__main__":
                                                                                  obs_filter))
     add_to_cat_idx, sne_magnorms, sne_sed_names = lensed_sne_ic.calc_sne_mags(obs_time, obs_filter)
     lensed_sne_ic.output_instance_catalog(add_to_cat_idx, sne_magnorms,
-                                          sne_sed_names, args.file_out)
+                                          sne_sed_names, args.cat_file_name)
