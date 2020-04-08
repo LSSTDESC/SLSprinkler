@@ -1,1 +1,2 @@
-from .Variability import *
+from .variability import *
+from .ic_utils import *

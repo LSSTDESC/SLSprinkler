@@ -12,9 +12,10 @@ from lsst.sims.photUtils import Bandpass
 from lsst.sims.catUtils.supernovae import SNObject
 from lsst.sims.catUtils.utils import ObservationMetaDataGenerator
 from desc.sims.GCRCatSimInterface import get_obs_md
+from dc2_utils import instCatUtils
 
 
-class lensedSneCat():
+class lensedSneCat(instCatUtils):
 
     def __init__(self, truth_cat, out_dir, cat_file_name,
                  sed_folder_name, write_sn_sed=True):
@@ -81,12 +82,18 @@ class lensedSneCat():
 
         return add_to_cat_list, np.array(sn_magnorm_list), sn_sed_names
 
-    def output_instance_catalog(self, add_to_cat_idx, sne_magnorms, sne_sed_names, filename):
+    def output_instance_catalog(self, add_to_cat_idx, sne_magnorms, sne_sed_names,
+                                obs_md, filename):
 
         full_cat_name = os.path.join(self.out_dir, filename)
 
         lensed_mags = sne_magnorms - \
             2.5*np.log10(np.abs(self.truth_cat['magnification'].iloc[add_to_cat_idx].values))
+
+        phosim_coords = self.get_phosim_coords(np.radians(self.truth_cat['ra'].values),
+                                               np.radians(self.truth_cat['dec'].values),
+                                               obs_md)
+        phosim_ra, phosim_dec = np.degrees(phosim_coords)
 
         with open(full_cat_name, 'w') as f:
             for truth_cat_idx, output_idx in zip(add_to_cat_idx, np.arange(len(add_to_cat_idx))):
@@ -94,8 +101,8 @@ class lensedSneCat():
                 f.write('object %s %f %f %f %s %f 0 0 0 0 0 point none CCM %f %f\n' \
                     % ('GLSN_%i_%i' % (self.truth_cat['dc2_sys_id'].iloc[truth_cat_idx],
                                        self.truth_cat['image_number'].iloc[truth_cat_idx]),
-                       self.truth_cat['ra'].iloc[truth_cat_idx],
-                       self.truth_cat['dec'].iloc[truth_cat_idx],
+                       phosim_ra[truth_cat_idx],
+                       phosim_dec[truth_cat_idx],
                        lensed_mags[output_idx],
                        sne_sed_names[output_idx],
                        self.truth_cat['redshift'].iloc[truth_cat_idx],
@@ -138,4 +145,4 @@ if __name__ == "__main__":
                                                                                  obs_filter))
     add_to_cat_idx, sne_magnorms, sne_sed_names = lensed_sne_ic.calc_sne_mags(obs_time, obs_filter)
     lensed_sne_ic.output_instance_catalog(add_to_cat_idx, sne_magnorms,
-                                          sne_sed_names, args.cat_file_name)
+                                          sne_sed_names, obs_md, args.cat_file_name)

@@ -6,10 +6,11 @@ from sqlalchemy import create_engine
 from lsst.sims.catUtils.utils import ObservationMetaDataGenerator
 from desc.sims.GCRCatSimInterface import get_obs_md
 from lsst.sims.utils import angularSeparation
+from dc2_utils import instCatUtils
 
 __all__ = ['hostImage']
 
-class hostImage(object):
+class hostImage(instCatUtils):
     """Takes FITS stamps and includes them in instance catalogs
     hostImage takes the following arguments:
     ra_center: Right ascension of the center of the field (in degrees)
@@ -17,12 +18,13 @@ class hostImage(object):
     fov: Field-of-view angular radius (in degrees).  2 degrees will cover
         the LSST focal plane."""
 
-    def __init__(self, ra_center, dec_center, fov, bandpass):
+    def __init__(self, obs_md, fov):
 
-        self.ra = ra_center
-        self.dec = dec_center
+        self.ra = obs_md.pointingRA
+        self.dec = obs_md.pointingDec
         self.radius = fov
-        self.bandpass = bandpass
+        self.bandpass = obs_md.bandpass
+        self.obs_md = obs_md
 
         self.bandpass_lookup = {'u': 0, 'g': 1, 'r': 2, 'i': 3, 'z': 4, 'y': 5}
 
@@ -98,7 +100,7 @@ class hostImage(object):
 
         ang_sep = np.array(ang_sep_list)
         keep_idx = np.where(ang_sep < self.radius)
-        host_image_df = host_df.iloc[keep_idx]
+        host_image_df = host_df.iloc[keep_idx].reset_index(drop=True)
 
         unique_id_list = []
 
@@ -106,6 +108,14 @@ class hostImage(object):
             write_status = 'a'
         else:
             write_status = 'w'
+
+        phosim_coords = self.get_phosim_coords(np.radians(host_image_df['ra_lens'].values),
+                                               np.radians(host_image_df['dec_lens'].values),
+                                               self.obs_md)
+        phosim_ra, phosim_dec = np.degrees(phosim_coords)
+
+        host_image_df['ra_lens'] = phosim_ra
+        host_image_df['dec_lens'] = phosim_dec
 
         with open(output_cat, write_status) as f:
             for df_row_num in range(len(host_image_df)):
@@ -152,8 +162,8 @@ if __name__ == "__main__":
                                                                                  obs_time,
                                                                                  obs_filter))
 
-    agn_host_image = hostImage(obs_md.pointingRA, obs_md.pointingDec, args.fov, obs_filter)
-    sne_host_image = hostImage(obs_md.pointingRA, obs_md.pointingDec, args.fov, obs_filter)
+    agn_host_image = hostImage(obs_md, args.fov)
+    sne_host_image = hostImage(obs_md, args.fov)
 
     agn_host_image.write_host_cat(os.path.join(args.fits_stamp_dir, 'agn_lensed_disks'), agn_host_truth_cat,
                                   args.file_out, append=False)
