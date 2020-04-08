@@ -194,6 +194,7 @@ def create_cats_sne(index, hdu_list, ahb_list):
  #       print(col) 
     UID_lens = df_inner['lens_cat_sys_id'][index]
     twinkles_ID = UID_lens
+    cat_id = df_inner['unique_id_x'][index]
     Ra_lens = df_inner['ra_lens_x'][index]
     Dec_lens = df_inner['dec_lens_x'][index]
     ys1 = df_inner['x_src'][index]
@@ -224,7 +225,8 @@ def create_cats_sne(index, hdu_list, ahb_list):
                 'index'      : index,
                 'UID_lens'   : UID_lens,
                 'Ra_lens'    : Ra_lens,
-                'Dec_lens'   : Dec_lens}
+                'Dec_lens'   : Dec_lens,
+                'cat_id'     : cat_id}
 
     #----------------------------------------------------------------------------
     mag_src_d_u = df_inner['magnorm_disk_u'][index]
@@ -363,7 +365,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
     zs   = srcP_b['zs']                 # redshift of the source
     rle  = ole.re_sv(vd, zl, zs)        # Einstein radius of lens, arcseconds.
     ql   = lens_P['ql']                 # axis ratio b/a
-    le   = ole.e2le(1.0 - ql, datadir)           # scale factor due to projection of ellpsoid
+    le   = ole.e2le(1.0 - ql)           # scale factor due to projection of ellpsoid
     phl  = lens_P['phl']                # position angle of the lens, degree
     eshr = lens_P['gamma']              # external shear
     eang = lens_P['phg']                # position angle of external shear
@@ -382,7 +384,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
 
     os.makedirs(os.path.join(outdir,'sne_lensed_bulges'), exist_ok=True)
 
-    fits_limg_b = os.path.join(outdir,'sne_lensed_bulges/') + str(lens_P['UID_lens']) + "_" + str(lensed_mag_b_u) + "_" + str(lensed_mag_b_g)+ "_" + str(lensed_mag_b_r)+ "_" + str(lensed_mag_b_i) + "_" + str(lensed_mag_b_z) + "_" + str(lensed_mag_b_y) + "_bulge.fits"#\
+    fits_limg_b = os.path.join(outdir,'sne_lensed_bulges/') + str(lens_P['cat_id']) + "_" + str(lensed_mag_b_u) + "_" + str(lensed_mag_b_g)+ "_" + str(lensed_mag_b_r)+ "_" + str(lensed_mag_b_i) + "_" + str(lensed_mag_b_z) + "_" + str(lensed_mag_b_y) + "_bulge.fits"
 
     pyfits.writeto(fits_limg_b, lensed_image_b.astype("float32"), overwrite=True)
 
@@ -392,7 +394,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
 
     os.makedirs(os.path.join(outdir,'sne_lensed_disks'), exist_ok=True)
 
-    fits_limg_d = os.path.join(outdir,'sne_lensed_disks/') + str(lens_P['UID_lens']) +  "_" + str(lensed_mag_d_u) + "_" + str(lensed_mag_d_g)+ "_" + str(lensed_mag_d_r)+ "_" + str(lensed_mag_d_i)+ "_" + str(lensed_mag_d_z)+ "_" + str(lensed_mag_d_y)+ "_disk.fits" #\
+    fits_limg_d = os.path.join(outdir,'sne_lensed_disks/') + str(lens_P['cat_id']) +  "_" + str(lensed_mag_d_u) + "_" + str(lensed_mag_d_g)+ "_" + str(lensed_mag_d_r)+ "_" + str(lensed_mag_d_i)+ "_" + str(lensed_mag_d_z)+ "_" + str(lensed_mag_d_y)+ "_disk.fits"
 
     pyfits.writeto(fits_limg_d, lensed_image_d.astype("float32"), overwrite=True)
 
