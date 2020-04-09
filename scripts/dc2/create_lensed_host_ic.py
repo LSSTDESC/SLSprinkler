@@ -71,7 +71,7 @@ class hostImage(instCatUtils):
                                                                       sys_magNorm,
                                                                       df_line['sed_%s_host' % gal_type].decode('utf-8'),
                                                                       df_line['redshift'],
-                                                                      str(image_dir)+'/'+fits_file_name,
+                                                                      os.path.basename(str(image_dir))+'/'+fits_file_name,
                                                                       df_line['av_internal_%s' % gal_type],
                                                                       df_line['rv_internal_%s' % gal_type],
                                                                       df_line['av_mw'],
