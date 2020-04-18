@@ -53,19 +53,12 @@ class hostImage(instCatUtils):
         sys_magNorm = sys_magNorm_list[self.bandpass_lookup[self.bandpass]]
         gal_type = fits_info[-1].split('.')[0]
 
-        # galaxy_id = np.right_shift(lens_id, 10)
-        # galaxy_id *= 10000
-        # galaxy_id += 4*df_line['twinkles_system']
-        # sys_id = np.left_shift(galaxy_id, 10)
-        # if gal_type == 'bulge':
-        #     sys_id += 97
-        # elif gal_type == 'disk':
-        #     sys_id += 107
-        # else:
-        #     raise ValueError('Invalid Galaxy Component Type in filename')
-        sys_id = lens_id
+        if gal_type == 'bulge':
+            sys_id = str(lens_id) + '_b'
+        elif gal_type == 'disk':
+            sys_id = str(lens_id) + '_d'
 
-        cat_str = 'object %i %f %f %f %s %f 0 0 0 0 0 %s 0.01 0 CCM %f %f CCM %f %f\n' % (sys_id,
+        cat_str = 'object %s %f %f %f %s %f 0 0 0 0 0 %s 0.01 0 CCM %f %f CCM %f %f\n' % (sys_id,
                                                                       df_line['ra_lens'],
                                                                       df_line['dec_lens'],
                                                                       sys_magNorm,
