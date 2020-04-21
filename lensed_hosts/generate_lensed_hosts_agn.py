@@ -19,6 +19,10 @@ parser.add_argument("--datadir", dest='datadir', type=str, default = datadefault
                     help='Location of data directory (containing truth tables)')
 parser.add_argument("--outdir", dest='outdir', type=str, default = outdefault,
                     help='Output location for FITS stamps')
+parser.add_argument("--pixel_size", type=float, default=0.01,
+                    help='Pixel size in arcseconds')
+parser.add_argument("--num_pix", type=int, default=1000,
+                    help='Number of pixels in x- or y-direction')
 
 args = parser.parse_args()
 datadir = args.datadir
@@ -228,7 +232,7 @@ def lensed_sersic_2d(xi1, xi2, yi1, yi2, source_cat, lens_cat):
     return mag_lensed_u, mag_lensed_g, mag_lensed_r, mag_lensed_i, mag_lensed_z, mag_lensed_y, g_limage
 
 
-def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
+def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
     """Does ray tracing of light from host galaxies using a non-singular isothermal ellipsoid profile.  
     Ultimately writes out a FITS image of the result of the ray tracing.      
     Parameters:
@@ -238,6 +242,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
     lens_P: Data array of lens parameters (takes output from create_cats_sne)  
     srcP_b: Data array of source bulge parameters (takes output from create_cats_sne) 
     srcP_d: Data array of source disk parameters (takes output from create_cats_sne) 
+    dsx: pixel scale in arcseconds
 
     Returns:
     -----------
@@ -265,35 +270,53 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d):
     yi1 = xi1 - ai1
     yi2 = xi2 - ai2
     #----------------------------------------------------------------------------
-    
+
     lensed_mag_b_u, lensed_mag_b_g, lensed_mag_b_r, lensed_mag_b_i, lensed_mag_b_z, lensed_mag_b_y, lensed_image_b = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_b,lens_P)
 
     os.makedirs(os.path.join(outdir,'agn_lensed_bulges'), exist_ok=True)
 
-    fits_limg_b = os.path.join(outdir,'agn_lensed_bulges/') + str(lens_P['UID_lens']) +  "_" + str(lensed_mag_b_u)+"_"+str(lensed_mag_b_g)+"_"+str(lensed_mag_b_r)+"_"+str(lensed_mag_b_i)+"_"+str(lensed_mag_b_z)+"_"+str(lensed_mag_b_y)+ "_bulge.fits" 
-    #fits_limg_b = os.path.join(outdir,'agn_lensed_bulges/') + str(lens_P['UID_lens']) + "_" + str(xlc1)+ "_" + str(xlc2)+"_"+str(vd)+"_"+str(zl)+"_"+str(zs)+"_"+str(rle)+"_"+str(ql)+"_"+str(le)+"_"+str(phl)+"_"+str(eshr)+"_"+str(eang)+ "_bulge.fits" 
+    fits_limg_b = os.path.join(outdir, 'agn_lensed_bulges', str(lens_P['UID_lens']) + "_bulge.fits")
 
-    pyfits.writeto(fits_limg_b, lensed_image_b.astype("float32"), overwrite=True)
-
+    output = pyfits.HDUList(pyfits.PrimaryHDU())
+    output[0].data = lensed_image_b.astype("float32")
+    output[0].header.set('LENS_ID', lens_P['UID_lens'], 'Lens system ID')
+    output[0].header.set('GALTYPE', 'bulge', 'Galaxy component type')
+    output[0].header.set('MAGNORMU', lensed_mag_b_u, 'magnorm for u-band visits')
+    output[0].header.set('MAGNORMG', lensed_mag_b_g, 'magnorm for g-band visits')
+    output[0].header.set('MAGNORMR', lensed_mag_b_r, 'magnorm for r-band visits')
+    output[0].header.set('MAGNORMI', lensed_mag_b_i, 'magnorm for i-band visits')
+    output[0].header.set('MAGNORMZ', lensed_mag_b_z, 'magnorm for z-band visits')
+    output[0].header.set('MAGNORMY', lensed_mag_b_y, 'magnorm for y-band visits')
+    output[0].header.set('PIXSCALE', dsx, 'pixel scale in arcseconds')
+    output.writeto(fits_limg_b, overwrite=True)
     #----------------------------------------------------------------------------
 
     lensed_mag_d_u, lensed_mag_d_g, lensed_mag_d_r, lensed_mag_d_i, lensed_mag_d_z, lensed_mag_d_y, lensed_image_d = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_d,lens_P)
 
     os.makedirs(os.path.join(outdir,'agn_lensed_disks'), exist_ok=True)
 
-   # fits_limg_d = os.path.join(outdir,'agn_lensed_disks/') + str(lens_P['UID_lens']) + "_" +str(rle)+ "_" + str(lensed_mag_d_u)+"_" +str(lensed_mag_d_g)+"_"+str(lensed_mag_d_r)+"_"+str(lensed_mag_d_i)+"_"+str(lensed_mag_d_z)+"_"+str(lensed_mag_d_y)+ "_disk.fits" 
-    fits_limg_d = os.path.join(outdir,'agn_lensed_disks/') + str(lens_P['UID_lens']) + "_" + str(lensed_mag_d_u)+"_" +str(lensed_mag_d_g)+"_"+str(lensed_mag_d_r)+"_"+str(lensed_mag_d_i)+"_"+str(lensed_mag_d_z)+"_"+str(lensed_mag_d_y)+ "_disk.fits" 
- 
+    fits_limg_d = os.path.join(outdir, 'agn_lensed_disks', str(lens_P['UID_lens']) + "_disk.fits")
 
-    pyfits.writeto(fits_limg_d, lensed_image_d.astype("float32"), overwrite=True)
+    output = pyfits.HDUList(pyfits.PrimaryHDU())
+    output[0].data = lensed_image_d.astype("float32")
+    output[0].header.set('LENS_ID', lens_P['UID_lens'], 'Lens system ID')
+    output[0].header.set('GALTYPE', 'disk', 'Galaxy component type')
+    output[0].header.set('MAGNORMU', lensed_mag_d_u, 'magnorm for u-band visits')
+    output[0].header.set('MAGNORMG', lensed_mag_d_g, 'magnorm for g-band visits')
+    output[0].header.set('MAGNORMR', lensed_mag_d_r, 'magnorm for r-band visits')
+    output[0].header.set('MAGNORMI', lensed_mag_d_i, 'magnorm for i-band visits')
+    output[0].header.set('MAGNORMZ', lensed_mag_d_z, 'magnorm for z-band visits')
+    output[0].header.set('MAGNORMY', lensed_mag_d_y, 'magnorm for y-band visits')
+    output[0].header.set('PIXSCALE', dsx, 'pixel scale in arcsecons')
+    output.writeto(fits_limg_d, overwrite=True)
 
     return 0
 
 
 if __name__ == '__main__':
 
-    dsx = 0.01  # pixel size per side, arcseconds
-    nnn = 1000  # number of pixels per side
+    dsx = args.pixel_size  # pixel size per side, arcseconds
+    nnn = args.num_pix  # number of pixels per side
     xi1, xi2 = ole.make_r_coor(nnn, dsx)
 
     hdulist, ahb = load_in_data_agn()
@@ -309,4 +332,4 @@ if __name__ == '__main__':
             message_row += message_freq
         lensP, srcPb, srcPd = create_cats_agns(i, hdulist, ahb)
         load_in_data_agn()
-        generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd)    
+        generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
