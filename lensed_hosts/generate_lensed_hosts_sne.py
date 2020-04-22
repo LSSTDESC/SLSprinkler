@@ -10,7 +10,7 @@ import pandas as pd
 import scipy.special as ss
 import om10_lensing_equations as ole
 import sqlite3 as sql
-
+from lensed_hosts_utils import write_fits_stamp
 
 datadefault = 'truth_tables'
 outdefault = 'outputs' 
@@ -383,45 +383,24 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
     yi2 = xi2 - ai2
     #----------------------------------------------------------------------------
 
-    lensed_mag_b_u, lensed_mag_b_g, lensed_mag_b_r, lensed_mag_b_i, lensed_mag_b_z, lensed_mag_b_y, lensed_image_b = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_b,lens_P)
+    bands = 'ugrizy'
 
-    os.makedirs(os.path.join(outdir,'sne_lensed_bulges'), exist_ok=True)
-
-    fits_limg_b = os.path.join(outdir, 'sne_lensed_bulges', str(lens_P['UID_lens']) + "_bulge.fits")
-
-    output = pyfits.HDUList(pyfits.PrimaryHDU())
-    output[0].data = lensed_image_b.astype("float32")
-    output[0].header.set('LENS_ID', lens_P['UID_lens'], 'Lens system ID')
-    output[0].header.set('GALTYPE', 'bulge', 'Galaxy component type')
-    output[0].header.set('MAGNORMU', lensed_mag_b_u, 'magnorm for u-band visits')
-    output[0].header.set('MAGNORMG', lensed_mag_b_g, 'magnorm for g-band visits')
-    output[0].header.set('MAGNORMR', lensed_mag_b_r, 'magnorm for r-band visits')
-    output[0].header.set('MAGNORMI', lensed_mag_b_i, 'magnorm for i-band visits')
-    output[0].header.set('MAGNORMZ', lensed_mag_b_z, 'magnorm for z-band visits')
-    output[0].header.set('MAGNORMY', lensed_mag_b_y, 'magnorm for y-band visits')
-    output[0].header.set('PIXSCALE', dsx, 'pixel scale in arcseconds')
-    output.writeto(fits_limg_b, overwrite=True)
+    results = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_b,lens_P)
+    magnorms = {band: magnorm for band, magnorm in zip(bands, results)}
+    lensed_image_b = results[-1]
+    lens_id = lens_P['UID_lens']
+    outfile = os.path.join(outdir, 'sne_lensed_bulges',
+                           f"{lens_id:09d}_bulge.fits")
+    write_fits_stamp(lensed_image_b, magnorms, lens_id, 'bulge', dsx, outfile)
 
     # ----------------------------------------------------------------------------
 
-    lensed_mag_d_u, lensed_mag_d_g, lensed_mag_d_r, lensed_mag_d_i, lensed_mag_d_z, lensed_mag_d_y, lensed_image_d = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_d,lens_P)
-
-    os.makedirs(os.path.join(outdir,'sne_lensed_disks'), exist_ok=True)
-
-    fits_limg_d = os.path.join(outdir, 'sne_lensed_disks', str(lens_P['UID_lens']) + "_disk.fits")
-
-    output = pyfits.HDUList(pyfits.PrimaryHDU())
-    output[0].data = lensed_image_d.astype("float32")
-    output[0].header.set('LENS_ID', lens_P['UID_lens'], 'Lens system ID')
-    output[0].header.set('GALTYPE', 'disk', 'Galaxy component type')
-    output[0].header.set('MAGNORMU', lensed_mag_d_u, 'magnorm for u-band visits')
-    output[0].header.set('MAGNORMG', lensed_mag_d_g, 'magnorm for g-band visits')
-    output[0].header.set('MAGNORMR', lensed_mag_d_r, 'magnorm for r-band visits')
-    output[0].header.set('MAGNORMI', lensed_mag_d_i, 'magnorm for i-band visits')
-    output[0].header.set('MAGNORMZ', lensed_mag_d_z, 'magnorm for z-band visits')
-    output[0].header.set('MAGNORMY', lensed_mag_d_y, 'magnorm for y-band visits')
-    output[0].header.set('PIXSCALE', dsx, 'pixel scale in arcsecons')
-    output.writeto(fits_limg_d, overwrite=True)
+    results = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_d,lens_P)
+    magnorms = {band: magnorm for band, magnorm in zip(bands, results)}
+    lensed_image_d = results[-1]
+    lens_id = lens_P['UID_lens']
+    outfile = os.path.join(outdir, 'sne_lensed_disks', f"{lens_id:09d}_disk.fits")
+    write_fits_stamp(lensed_image_d, magnorms, lens_id, 'disk', dsx, outfile)
 
     return 0
 
@@ -440,4 +419,8 @@ if __name__ == '__main__':
             print ("working on system ", i , "of", max(hdulist.index))
             message_row += message_freq
         lensP, srcPb, srcPd = create_cats_sne(i, hdulist, ahb)
-        generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
+        try:
+            generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
+        except RuntimeError as eobj:
+            print(eobj)
+        sys.stdout.flush()
