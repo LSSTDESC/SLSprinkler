@@ -249,7 +249,6 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
     -----------
 
     """
-    dsx  = 0.01
     xlc1 = lens_P['xl1']                # x position of the lens, arcseconds
     xlc2 = lens_P['xl2']                # y position of the lens, arcseconds
     rlc  = 0.0                          # core size of Non-singular Isothermal Ellipsoid
