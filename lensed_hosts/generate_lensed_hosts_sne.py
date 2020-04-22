@@ -23,13 +23,15 @@ parser.add_argument("--outdir", dest='outdir', type=str, default = outdefault,
 parser.add_argument("--pixel_size", type=float, default=0.01,
                     help='Pixel size in arcseconds')
 parser.add_argument("--num_pix", type=int, default=1000,
-                    help='Number of pixels in x- or y-direction')
+                    help='Number of pixels in x- and y-directions')
+parser.add_argument("--seed", type=int, default=42,
+                    help='Seed for random draw of galaxy locations.')
 args = parser.parse_args()
 datadir = args.datadir
 outdir = args.outdir
 
 
-def random_location(Reff_src, qs, phs, ns):
+def random_location(Reff_src, qs, phs, ns, rng=None):
     """Sample a random (x, y) location from the surface brightness
     profile of the galaxy. The input parameters are Sersic parameters for the host galaxy.
     Parameters:
@@ -42,19 +44,25 @@ def random_location(Reff_src, qs, phs, ns):
         position angle of the galaxy in degrees
     ns: int
         Sersic index
+    rng: numpy.random.RandomState [None]
+        RandomState object to use for generating random draws from [0, 1).
+        If None, then create a RandomState with default seeding.
 
     Returns:
     -----------
     dx: horizontal coordinate of random location (pixel coordinates)
     dy: vertical coordinate of random location (pixel coordinates)
     """
+    if rng is None:
+        rng = np.random.RandomState()
+
     phs_rad = np.deg2rad(phs-90)
 
     bn = ss.gammaincinv(2. * ns, 0.5)
-    z = np.random.random_sample()
+    z = rng.random_sample()
     x = ss.gammaincinv(2. * ns, z)
     R = (x / bn)**ns * Reff_src
-    theta = np.random.random() * 2 * np.pi
+    theta = rng.random_sample() * 2 * np.pi
 
     xp, yp = R * np.cos(theta), R * np.sin(theta)
     xt = xp * np.sqrt(qs)
@@ -172,7 +180,7 @@ def load_in_data_sne():
     return slc_purged, shb_purged 
 
 
-def create_cats_sne(index, hdu_list, ahb_list):
+def create_cats_sne(index, hdu_list, ahb_list, rng=None):
     """
     Takes input catalogs and isolates lensing parameters as well as ra and dec of lens
     Parameters:
@@ -183,6 +191,9 @@ def create_cats_sne(index, hdu_list, ahb_list):
         row of data frame that contains lens parameters
     ahb_list:
         row of data frame that contains lens galaxy parameters for the galactic bulge
+    rng:
+        numpy.random.RandomState object used to generate galaxy position
+        draws.
 
     Returns:
     -----------
@@ -244,7 +255,7 @@ def create_cats_sne(index, hdu_list, ahb_list):
     zs_d = df_inner['redshift_x'][index]
     sed_src_d = df_inner['sed_disk_host'][index]
 
-    dys2, dys1 = random_location(Reff_src_d, qs_d, phs_d, ns_d)
+    dys2, dys1 = random_location(Reff_src_d, qs_d, phs_d, ns_d, rng)
     ys1 = df_inner['x_src'][index] - dys1    # needed more discussion
     ys2 = df_inner['y_src'][index] - dys2    # needed more discussion
 
@@ -410,6 +421,8 @@ if __name__ == '__main__':
     nnn = args.num_pix  # number of pixels per side
     xi1, xi2 = ole.make_r_coor(nnn, dsx)
 
+    rng = np.random.RandomState(args.seed)
+
     hdulist, ahb = load_in_data_sne()
 
     message_row = 0
@@ -418,7 +431,7 @@ if __name__ == '__main__':
         if i >= message_row:
             print ("working on system ", i , "of", max(hdulist.index))
             message_row += message_freq
-        lensP, srcPb, srcPd = create_cats_sne(i, hdulist, ahb)
+        lensP, srcPb, srcPd = create_cats_sne(i, hdulist, ahb, rng)
         try:
             generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
         except RuntimeError as eobj:
