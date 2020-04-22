@@ -312,7 +312,6 @@ if __name__ == '__main__':
             print ("working on system ", i , "of", max(hdulist.index))
             message_row += message_freq
         lensP, srcPb, srcPd = create_cats_agns(i, hdulist, ahb)
-        load_in_data_agn()
         try:
             generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
         except RuntimeError as eobj:
