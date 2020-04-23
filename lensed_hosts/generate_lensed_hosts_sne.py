@@ -12,8 +12,11 @@ import om10_lensing_equations as ole
 import sqlite3 as sql
 from lensed_hosts_utils import write_fits_stamp
 
+# Have numpy raise exceptions for operations that would produce nan or inf.
+np.seterr(invalid='raise', divide='raise', over='raise')
+
 datadefault = 'truth_tables'
-outdefault = 'outputs' 
+outdefault = 'outputs'
 
 parser = argparse.ArgumentParser(description='The location of the desired output directory')
 parser.add_argument("--datadir", dest='datadir', type=str, default = datadefault,
@@ -225,6 +228,10 @@ def create_cats_sne(index, hdu_list, ahb_list, rng=None):
     ext_shr = df_inner['gamma_lenscat'][index]
     ext_phi = df_inner['phig_lenscat'][index]
 
+    if not (np.isfinite(df_inner['x_src'][index]) and
+            np.isfinite(df_inner['y_src'][index])):
+        raise RuntimeError(f'x_src or y_src is not finite for lens id {lid}')
+
     #----------------------------------------------------------------------------
     lens_cat = {'xl1'        : xl1,
                 'xl2'        : xl2,
@@ -242,6 +249,13 @@ def create_cats_sne(index, hdu_list, ahb_list, rng=None):
                 'Dec_lens'   : Dec_lens}
 
     #----------------------------------------------------------------------------
+    bands = 'ugrizy'
+    for galtype in ('disk', 'bulge'):
+        if any([not np.isfinite(df_inner[f'magnorm_{galtype}_{band}'][index])
+                for band in bands]):
+            raise RuntimeError('non-finite magnorm values in sne_hosts table '
+                               f'for lens id {lid}')
+
     mag_src_d_u = df_inner['magnorm_disk_u'][index]
     mag_src_d_g = df_inner['magnorm_disk_g'][index]
     mag_src_d_r = df_inner['magnorm_disk_r'][index]
@@ -258,6 +272,8 @@ def create_cats_sne(index, hdu_list, ahb_list, rng=None):
     dys2, dys1 = random_location(Reff_src_d, qs_d, phs_d, ns_d, rng)
     ys1 = df_inner['x_src'][index] - dys1    # needed more discussion
     ys2 = df_inner['y_src'][index] - dys2    # needed more discussion
+    if np.abs(ys1) > 5 or np.abs(ys2) > 5:
+        print(f'ys1, ys2: {ys1:.3f}  {ys2:.3f}')
 
     srcsP_disk = {'ys1'          : ys1,
                   'ys2'          : ys2,
@@ -273,6 +289,7 @@ def create_cats_sne(index, hdu_list, ahb_list, rng=None):
                   'ns'           : ns_d,
                   'zs'           : zs_d,
                   'sed_src'      : sed_src_d,
+                  'lensid'       : lid,
                   'components'   : 'disk'}
 
     #----------------------------------------------------------------------------
@@ -304,6 +321,7 @@ def create_cats_sne(index, hdu_list, ahb_list, rng=None):
                    'ns'           : ns_b,
                    'zs'           : zs_b,
                    'sed_src'      : sed_src_b,
+                   'lensid'       : lid,
                    'components'   : 'bulge'}
 
 
@@ -344,12 +362,19 @@ def lensed_sersic_2d(xi1, xi2, yi1, yi2, source_cat, lens_cat):
     g_limage = ole.sersic_2d(yi1,yi2,ysc1,ysc2,Reff_arc,qs,phs,ndex)
     g_source = ole.sersic_2d(xi1,xi2,ysc1,ysc2,Reff_arc,qs,phs,ndex)
 
-    mag_lensed_u = mag_tot_u - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_g = mag_tot_g - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_r = mag_tot_r - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_i = mag_tot_i - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_z = mag_tot_z - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_y = mag_tot_y - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
+    g_limage_sum = np.sum(g_limage)
+    g_source_sum = np.sum(g_source)
+    if g_limage_sum == 0 or g_source_sum == 0:
+        raise RuntimeError('lensed image or soruce has zero-valued integral '
+                           f'for lens id {source_cat["lensid"]}')
+    dmag = -2.5*np.log10(g_limage_sum/g_source_sum)
+
+    mag_lensed_u = mag_tot_u + dmag
+    mag_lensed_g = mag_tot_g + dmag
+    mag_lensed_r = mag_tot_r + dmag
+    mag_lensed_i = mag_tot_i + dmag
+    mag_lensed_z = mag_tot_z + dmag
+    mag_lensed_y = mag_tot_y + dmag
 
     return mag_lensed_u, mag_lensed_g, mag_lensed_r, mag_lensed_i, mag_lensed_z, mag_lensed_y, g_limage
 
@@ -430,8 +455,8 @@ if __name__ == '__main__':
         if i >= message_row:
             print ("working on system ", i , "of", max(hdulist.index))
             message_row += message_freq
-        lensP, srcPb, srcPd = create_cats_sne(i, hdulist, ahb, rng)
         try:
+            lensP, srcPb, srcPd = create_cats_sne(i, hdulist, ahb, rng)
             generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
         except RuntimeError as eobj:
             print(eobj)

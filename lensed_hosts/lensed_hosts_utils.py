@@ -13,8 +13,8 @@ def write_fits_stamp(data, magnorms, lens_id, galaxy_type, pixel_scale,
                      outfile, overwrite=True):
     boundary_ratio = boundary_max(data)/np.max(data)
     if boundary_ratio > 1e-2:
-        print(f'(boundary max/data max) > 1e-2 for {galaxy_type} '
-              f'{lens_id}: {boundary_ratio:.2e}')
+        print(f'(boundary max/data max) = {boundary_ratio:.2e} '
+              f'for {galaxy_type} {lens_id}')
     for magnorm in magnorms.values():
         if not np.isfinite(magnorm):
             raise RuntimeError(f'non-finite magnorm for {lens_id}')
