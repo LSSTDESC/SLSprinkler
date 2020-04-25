@@ -62,8 +62,9 @@ def re_sv(sigmav, z1, z2):
 
 #--------------------------------------------------------------------
 
-def e2le(e_in, datadir):
-    e_tmp,lef_tmp = np.loadtxt(os.path.join(datadir,"ell_lef.dat"),
+def e2le(e_in):
+    e_tmp,lef_tmp = np.loadtxt(os.path.join(os.path.dirname(__file__), 
+                                            '../data','ell_lef.dat'),
                                comments='#',usecols=(0,1),unpack=True)
     f1 = interp1d(e_tmp, lef_tmp, kind='linear')
 

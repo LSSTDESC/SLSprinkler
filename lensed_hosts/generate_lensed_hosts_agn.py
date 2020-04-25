@@ -37,8 +37,8 @@ def load_in_data_agn():
 
     Returns:
     -----------
-    lens_list: data array for lenses.  Includes t0, x, y, sigma, gamma, e, theta_e     
-    ahb_purged: Data array for galaxy bulges.  Includes prefix, uniqueId, raPhoSim, decPhoSim, phosimMagNorm   
+    lens_list: data array for lenses.  Includes t0, x, y, sigma, gamma, e, theta_e
+    ahb_purged: Data array for galaxy bulges.  Includes prefix, uniqueId, raPhoSim, decPhoSim, phosimMagNorm
     ahd_purged: Data array for galaxy disks.  Includes prefix, uniqueId, raPhoSim, decPhoSim, phosimMagNorm
 
     """
@@ -50,16 +50,16 @@ def load_in_data_agn():
 
     idx = agn_host['image_number'] == 0
     ahb_purged = agn_host[idx]
-   
+
     lens_list = agn_lens
    # lens_list = pyfits.open(os.path.join(twinkles_data_dir, 'om10_qso_mock.fits'))
 
-    return lens_list, ahb_purged 
+    return lens_list, ahb_purged
 
 
 def create_cats_agns(index, hdu_list, ahb_list):
     """
-    Takes input catalogs and isolates lensing parameters as well as ra and dec of lens     
+    Takes input catalogs and isolates lensing parameters as well as ra and dec of lens
 
     Parameters:
     -----------
@@ -79,11 +79,13 @@ def create_cats_agns(index, hdu_list, ahb_list):
 
     df_inner = pd.merge(ahb_list, hdu_list, on='lens_cat_sys_id', how='inner')
 
-    #    for col in df_inner.columns: 
- #       print(col) 
-   
-    twinkles_ID = df_inner['lens_cat_sys_id'][index]
-    UID_lens = twinkles_ID
+#    for col in df_inner.columns:
+#        print(col)
+    dc2_sys_id_tokens = df_inner['dc2_sys_id_x'][index].split('_')
+    UID_lens = '_'.join((dc2_sys_id_tokens[0], 'host', dc2_sys_id_tokens[1],
+                         str(df_inner['image_number'][index])))
+    twinkles_ID = UID_lens
+    cat_id = df_inner['unique_id_x'][index]
     Ra_lens = df_inner['ra_lens_x'][index]
     Dec_lens = df_inner['dec_lens_x'][index]
     ys1 = df_inner['x_src'][index]
@@ -94,13 +96,13 @@ def create_cats_agns(index, hdu_list, ahb_list):
     xl2 = 0.0
     ra_lens_check = df_inner['ra_lens_y'][index]
     dec_lens_check = df_inner['dec_lens_y'][index]
-    lid = df_inner['lens_cat_sys_id'][index] 
-    vd = df_inner['vel_disp_lenscat'][index] 
-    zd = df_inner['redshift_y'][index] 
-    ql = 1.0 - df_inner['ellip_lenscat'][index] 
-    phi = df_inner['position_angle_y'][index] 
+    lid = df_inner['lens_cat_sys_id'][index]
+    vd = df_inner['vel_disp_lenscat'][index]
+    zd = df_inner['redshift_y'][index]
+    ql = 1.0 - df_inner['ellip_lens'][index]
+    phi = df_inner['position_angle_y'][index]
     ext_shr = df_inner['gamma_lenscat'][index]
-    ext_phi = df_inner['phig_lenscat'][index] 
+    ext_phi = df_inner['phig_lenscat'][index]
 
     #----------------------------------------------------------------------------
     lens_cat = {'xl1'        : xl1,
@@ -118,8 +120,9 @@ def create_cats_agns(index, hdu_list, ahb_list):
                 'index'      : index,
                 'UID_lens'   : UID_lens,
                 'Ra_lens'    : Ra_lens,
-                'Dec_lens'   : Dec_lens}
-    
+                'Dec_lens'   : Dec_lens,
+                'cat_id'     : cat_id}
+
     #----------------------------------------------------------------------------
 
     mag_src_b_u = df_inner['magnorm_bulge_u'][index]
@@ -135,7 +138,7 @@ def create_cats_agns(index, hdu_list, ahb_list):
     ns_b = df_inner['sindex_bulge'][index]
     zs_b = df_inner['redshift_x'][index]
     sed_src_b = df_inner['sed_bulge_host'][index]
-    
+
     srcsP_bulge = {'ys1'          : ys1,
                    'ys2'          : ys2,
                    'mag_src_u'      : mag_src_b_u,
@@ -149,9 +152,9 @@ def create_cats_agns(index, hdu_list, ahb_list):
                    'phs'          : phs_b,
                    'ns'           : ns_b,
                    'zs'           : zs_b,
-                   'sed_src'      : sed_src_b,                         
+                   'sed_src'      : sed_src_b,
                    'components'   : 'bulge'}
-    
+
     #----------------------------------------------------------------------------
     mag_src_d_u = df_inner['magnorm_disk_u'][index]
     mag_src_d_g = df_inner['magnorm_disk_g'][index]
@@ -182,14 +185,14 @@ def create_cats_agns(index, hdu_list, ahb_list):
                   'zs'           : zs_d,
                   'sed_src'      : sed_src_d,
                   'components'   : 'disk'}
-    
+
     #----------------------------------------------------------------------------
 
     return lens_cat, srcsP_bulge, srcsP_disk
 
 
 def lensed_sersic_2d(xi1, xi2, yi1, yi2, source_cat, lens_cat):
-    """Defines a magnitude of lensed host galaxy using 2d Sersic profile 
+    """Defines a magnitude of lensed host galaxy using 2d Sersic profile
     Parameters:
     -----------
     xi1: x-position of lens (pixel coordinates)
@@ -234,15 +237,15 @@ def lensed_sersic_2d(xi1, xi2, yi1, yi2, source_cat, lens_cat):
 
 
 def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
-    """Does ray tracing of light from host galaxies using a non-singular isothermal ellipsoid profile.  
-    Ultimately writes out a FITS image of the result of the ray tracing.      
+    """Does ray tracing of light from host galaxies using a non-singular isothermal ellipsoid profile.
+    Ultimately writes out a FITS image of the result of the ray tracing.
     Parameters:
     -----------
     xi1: x-position of lens (pixel coordinates)
     xi2: y-position of lens (pixel coordinates)
-    lens_P: Data array of lens parameters (takes output from create_cats_sne)  
-    srcP_b: Data array of source bulge parameters (takes output from create_cats_sne) 
-    srcP_d: Data array of source disk parameters (takes output from create_cats_sne) 
+    lens_P: Data array of lens parameters (takes output from create_cats_sne)
+    srcP_b: Data array of source bulge parameters (takes output from create_cats_sne)
+    srcP_d: Data array of source disk parameters (takes output from create_cats_sne)
     dsx: pixel scale in arcseconds
 
     Returns:
@@ -257,7 +260,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
     zs   = srcP_b['zs']                 # redshift of the source
     rle  = ole.re_sv(vd, zl, zs)        # Einstein radius of lens, arcseconds.
     ql   = lens_P['ql']                 # axis ratio b/a
-    le   = ole.e2le(1.0 - ql, datadir)           # scale factor due to projection of ellipsoid
+    le   = ole.e2le(1.0 - ql)           # scale factor due to projection of ellipsoid
     phl  = lens_P['phl']                # position angle of the lens, degree
     eshr = lens_P['gamma']              # external shear
     eang = lens_P['phg']                # position angle of external shear
@@ -277,8 +280,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
     magnorms = {band: magnorm for band, magnorm in zip(bands, results)}
     lensed_image_b = results[-1]
     lens_id = lens_P['UID_lens']
-    outfile = os.path.join(outdir, 'agn_lensed_bulges',
-                           f"{lens_id:09d}_bulge.fits")
+    outfile = os.path.join(outdir, 'agn_lensed_bulges', f"{lens_id}_bulge.fits")
     write_fits_stamp(lensed_image_b, magnorms, lens_id, 'bulge', dsx, outfile)
 
     #----------------------------------------------------------------------------
@@ -287,7 +289,7 @@ def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
     magnorms = {band: magnorm for band, magnorm in zip(bands, results)}
     lensed_image_d = results[-1]
     lens_id = lens_P['UID_lens']
-    outfile = os.path.join(outdir, 'agn_lensed_disks', f"{lens_id:09d}_disk.fits")
+    outfile = os.path.join(outdir, 'agn_lensed_disks', f"{lens_id}_disk.fits")
     write_fits_stamp(lensed_image_d, magnorms, lens_id, 'disk', dsx, outfile)
 
     return 0
