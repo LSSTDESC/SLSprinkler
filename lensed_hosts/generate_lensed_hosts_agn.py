@@ -10,10 +10,13 @@ import scipy.special as ss
 import om10_lensing_equations as ole
 import sqlite3 as sql
 import sys
-from lensed_hosts_utils import write_fits_stamp
+from lensed_hosts_utils import generate_lensed_host
+
+# Have numpy raise exceptions for operations that would produce nan or inf.
+np.seterr(invalid='raise', divide='raise', over='raise')
 
 datadefault = 'truth_tables'
-outdefault = 'outputs' 
+outdefault = 'outputs'
 
 parser = argparse.ArgumentParser(description='The location of the data directory')
 parser.add_argument("--datadir", dest='datadir', type=str, default = datadefault,
@@ -52,7 +55,6 @@ def load_in_data_agn():
     ahb_purged = agn_host[idx]
 
     lens_list = agn_lens
-   # lens_list = pyfits.open(os.path.join(twinkles_data_dir, 'om10_qso_mock.fits'))
 
     return lens_list, ahb_purged
 
@@ -186,113 +188,7 @@ def create_cats_agns(index, hdu_list, ahb_list):
                   'sed_src'      : sed_src_d,
                   'components'   : 'disk'}
 
-    #----------------------------------------------------------------------------
-
     return lens_cat, srcsP_bulge, srcsP_disk
-
-
-def lensed_sersic_2d(xi1, xi2, yi1, yi2, source_cat, lens_cat):
-    """Defines a magnitude of lensed host galaxy using 2d Sersic profile
-    Parameters:
-    -----------
-    xi1: x-position of lens (pixel coordinates)
-    xi2: y-position of lens (pixel coordinates)
-    yi1: x-position of source bulge or disk (pixel coordinates)
-    yi2: y-position of source bulge or disk (pixel coordinates)
-    source_cat: source parameters
-    lens_cat: lens parameters, from create_cats_sne()
-
-    Returns:
-    -----------
-    mag_lensed: Lensed magnitude for host galaxy
-    g_limage: Lensed image (array of electron counts)
-    """
-    #----------------------------------------------------------------------
-    ysc1     = source_cat['ys1']        # x position of the source, arcseconds
-    ysc2     = source_cat['ys2']        # y position of the source, arcseconds
-    mag_tot_u  = source_cat['mag_src_u']    # total magnitude of the source
-    mag_tot_g  = source_cat['mag_src_g']    # total magnitude of the source
-    mag_tot_r  = source_cat['mag_src_r']    # total magnitude of the source
-    mag_tot_i  = source_cat['mag_src_i']    # total magnitude of the source
-    mag_tot_z  = source_cat['mag_src_z']    # total magnitude of the source
-    mag_tot_y  = source_cat['mag_src_y']    # total magnitude of the source
-    Reff_arc = source_cat['Reff_src']   # Effective Radius of the source, arcseconds
-    qs       = source_cat['qs']         # axis ratio of the source, b/a
-    phs      = source_cat['phs']        # orientation of the source, degree
-    ns       = source_cat['ns']         # index of the source
-
-    #----------------------------------------------------------------------
-
-    g_limage = ole.sersic_2d(yi1,yi2,ysc1,ysc2,Reff_arc,qs,phs,ns)
-    g_source = ole.sersic_2d(xi1,xi2,ysc1,ysc2,Reff_arc,qs,phs,ns)
-
-    mag_lensed_u = mag_tot_u - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_g = mag_tot_g - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_r = mag_tot_r - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_i = mag_tot_i - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_z = mag_tot_z - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-    mag_lensed_y = mag_tot_y - 2.5*np.log10(np.sum(g_limage)/np.sum(g_source))
-
-    return mag_lensed_u, mag_lensed_g, mag_lensed_r, mag_lensed_i, mag_lensed_z, mag_lensed_y, g_limage
-
-
-def generate_lensed_host(xi1, xi2, lens_P, srcP_b, srcP_d, dsx):
-    """Does ray tracing of light from host galaxies using a non-singular isothermal ellipsoid profile.
-    Ultimately writes out a FITS image of the result of the ray tracing.
-    Parameters:
-    -----------
-    xi1: x-position of lens (pixel coordinates)
-    xi2: y-position of lens (pixel coordinates)
-    lens_P: Data array of lens parameters (takes output from create_cats_sne)
-    srcP_b: Data array of source bulge parameters (takes output from create_cats_sne)
-    srcP_d: Data array of source disk parameters (takes output from create_cats_sne)
-    dsx: pixel scale in arcseconds
-
-    Returns:
-    -----------
-
-    """
-    xlc1 = lens_P['xl1']                # x position of the lens, arcseconds
-    xlc2 = lens_P['xl2']                # y position of the lens, arcseconds
-    rlc  = 0.0                          # core size of Non-singular Isothermal Ellipsoid
-    vd   = lens_P['vd']                 # velocity dispersion of the lens
-    zl   = lens_P['zl']                 # redshift of the lens
-    zs   = srcP_b['zs']                 # redshift of the source
-    rle  = ole.re_sv(vd, zl, zs)        # Einstein radius of lens, arcseconds.
-    ql   = lens_P['ql']                 # axis ratio b/a
-    le   = ole.e2le(1.0 - ql)           # scale factor due to projection of ellipsoid
-    phl  = lens_P['phl']                # position angle of the lens, degree
-    eshr = lens_P['gamma']              # external shear
-    eang = lens_P['phg']                # position angle of external shear
-    ekpa = 0.0                          # external convergence
-
-    #----------------------------------------------------------------------
-    ai1, ai2 = ole.alphas_sie(xlc1, xlc2, phl, ql, rle, le,
-                              eshr, eang, ekpa, xi1, xi2)
-
-    yi1 = xi1 - ai1
-    yi2 = xi2 - ai2
-    #----------------------------------------------------------------------------
-
-    bands = 'ugrizy'
-
-    results = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_b,lens_P)
-    magnorms = {band: magnorm for band, magnorm in zip(bands, results)}
-    lensed_image_b = results[-1]
-    lens_id = lens_P['UID_lens']
-    outfile = os.path.join(outdir, 'agn_lensed_bulges', f"{lens_id}_bulge.fits")
-    write_fits_stamp(lensed_image_b, magnorms, lens_id, 'bulge', dsx, outfile)
-
-    #----------------------------------------------------------------------------
-
-    results = lensed_sersic_2d(xi1,xi2,yi1,yi2,srcP_d,lens_P)
-    magnorms = {band: magnorm for band, magnorm in zip(bands, results)}
-    lensed_image_d = results[-1]
-    lens_id = lens_P['UID_lens']
-    outfile = os.path.join(outdir, 'agn_lensed_disks', f"{lens_id}_disk.fits")
-    write_fits_stamp(lensed_image_d, magnorms, lens_id, 'disk', dsx, outfile)
-
-    return 0
 
 
 if __name__ == '__main__':
@@ -312,9 +208,10 @@ if __name__ == '__main__':
         if i >= message_row:
             print ("working on system ", i , "of", max(hdulist.index))
             message_row += message_freq
-        lensP, srcPb, srcPd = create_cats_agns(i, hdulist, ahb)
         try:
-            generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx)
+            lensP, srcPb, srcPd = create_cats_agns(i, hdulist, ahb)
+            generate_lensed_host(xi1, xi2, lensP, srcPb, srcPd, dsx,
+                                 outdir, 'agn')
         except RuntimeError as eobj:
             print(eobj)
         sys.stdout.flush()
