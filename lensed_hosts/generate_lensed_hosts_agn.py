@@ -30,8 +30,6 @@ message_row = 0
 message_freq = 50
 num_rows = len(generator)
 for i in range(num_rows):
-    if i > 10:
-        break
     if i >= message_row:
         print("working on system ", i, "of", num_rows)
         message_row += message_freq

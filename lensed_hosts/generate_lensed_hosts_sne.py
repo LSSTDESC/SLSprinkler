@@ -1,7 +1,7 @@
 #!/usr/bin/env python
+"""Script to generate SNe lensed hosts."""
 import os
 import sys
-import pylab as pl
 import argparse
 import numpy as np
 from lensed_hosts_utils import LensedHostGenerator
@@ -21,10 +21,13 @@ parser.add_argument("--num_pix", type=int, default=1000,
 parser.add_argument("--seed", type=int, default=42,
                     help='Seed for random draw of galaxy locations.')
 args = parser.parse_args()
+
 host_truth_file = os.path.join(args.datadir, 'host_truth.db')
 lens_truth_file = os.path.join(args.datadir, 'lens_truth.db')
-rng = np.random.RandomState(args.seed)
-
+if args.seed != -1:
+    rng = np.random.RandomState(args.seed)
+else:
+    rng = None
 generator = LensedHostGenerator(host_truth_file, lens_truth_file, 'sne',
                                 args.outdir, pixel_size=args.pixel_size,
                                 num_pix=args.num_pix, rng=rng)
@@ -33,8 +36,6 @@ message_row = 0
 message_freq = 50
 num_rows = len(generator)
 for i in range(num_rows):
-    if i > 10:
-        break
     if i >= message_row:
         print("working on system ", i, "of", num_rows)
         message_row += message_freq
