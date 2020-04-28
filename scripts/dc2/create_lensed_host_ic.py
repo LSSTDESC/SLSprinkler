@@ -52,6 +52,7 @@ class hostImage(instCatUtils):
             sys_magNorm_list = [hdus[0].header[f'MAGNORM{_}'] for _ in 'UGRIZY']
             sys_magNorm = sys_magNorm_list[self.bandpass_lookup[self.bandpass]]
             gal_type = hdus[0].header['GALTYPE'].strip()
+            pixel_scale = hdus[0].header['PIXSCALE']
 
         if gal_type == 'bulge':
             sys_id = lens_id + '_b'
@@ -63,7 +64,7 @@ class hostImage(instCatUtils):
             sed_file = sed_file.decode('utf-8')
         else:
             sed_file = sed_file.lstrip('b').strip("'")
-        cat_str = 'object %s %f %f %f %s %f 0 0 0 0 0 %s 0.01 0 CCM %f %f CCM %f %f\n'\
+        cat_str = 'object %s %f %f %f %s %f 0 0 0 0 0 %s %f 0 CCM %f %f CCM %f %f\n'\
                   % (sys_id,
                      df_line['ra_lens'],
                      df_line['dec_lens'],
@@ -71,6 +72,7 @@ class hostImage(instCatUtils):
                      sed_file,
                      df_line['redshift'],
                      os.path.basename(str(image_dir))+'/'+fits_file_name,
+                     pixel_scale,
                      df_line['av_internal_%s' % gal_type],
                      df_line['rv_internal_%s' % gal_type],
                      df_line['av_mw'],
