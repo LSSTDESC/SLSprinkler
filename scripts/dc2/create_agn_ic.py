@@ -61,8 +61,8 @@ class lensedAgnCat(instCatUtils):
             for row_idx in range(len(self.truth_cat)):
 
                 f.write('object %s %f %f %f agnSED/agn.spec.gz %f 0 0 0 0 0 point none CCM %f %f\n' \
-                    % ('GLAGN_%i_%i' % (self.truth_cat['dc2_sys_id'].iloc[row_idx],
-                                        self.truth_cat['image_number'].iloc[row_idx]),
+                    % ('%s_%s' % (self.truth_cat['dc2_sys_id'].iloc[row_idx],
+                                  self.truth_cat['image_number'].iloc[row_idx]),
                        phosim_ra[row_idx],
                        phosim_dec[row_idx],
                        lensed_mags[row_idx],
@@ -71,7 +71,7 @@ class lensedAgnCat(instCatUtils):
                        self.truth_cat['rv_mw'].iloc[row_idx]))
 
         return
-        
+
 
 if __name__ == "__main__":
 
@@ -102,4 +102,4 @@ if __name__ == "__main__":
                                                                                  obs_filter))
     d_mag = lensed_agn_ic.calc_agn_dmags(obs_time, obs_filter)
     lensed_agn_ic.output_instance_catalog(d_mag, args.file_out, obs_md)
-    
+

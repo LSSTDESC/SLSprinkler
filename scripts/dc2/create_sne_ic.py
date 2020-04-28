@@ -66,7 +66,7 @@ class lensedSneCat(instCatUtils):
                 sn_magnorm = current_sn_obj.catsimBandMag(self.imSimBand, sed_mjd)
                 sn_name = None
                 if self.write_sn_sed:
-                    sn_name = '%s/specFileGLSN_%i_%i_%.4f.txt' % (self.sed_folder_name,
+                    sn_name = '%s/specFileGLSN_%s_%s_%.4f.txt' % (self.sed_folder_name,
                                                                   self.truth_cat['dc2_sys_id'].iloc[idx],
                                                                   self.truth_cat['image_number'].iloc[idx],
                                                                   obs_mjd)
@@ -99,8 +99,8 @@ class lensedSneCat(instCatUtils):
             for truth_cat_idx, output_idx in zip(add_to_cat_idx, np.arange(len(add_to_cat_idx))):
 
                 f.write('object %s %f %f %f %s %f 0 0 0 0 0 point none CCM %f %f\n' \
-                    % ('GLSN_%i_%i' % (self.truth_cat['dc2_sys_id'].iloc[truth_cat_idx],
-                                       self.truth_cat['image_number'].iloc[truth_cat_idx]),
+                    % ('%s_%s' % (self.truth_cat['dc2_sys_id'].iloc[truth_cat_idx],
+                                  self.truth_cat['image_number'].iloc[truth_cat_idx]),
                        phosim_ra[truth_cat_idx],
                        phosim_dec[truth_cat_idx],
                        lensed_mags[output_idx],

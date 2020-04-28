@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import argparse
+from astropy.io import fits
 from sqlalchemy import create_engine
 from lsst.sims.catUtils.utils import ObservationMetaDataGenerator
 from desc.sims.GCRCatSimInterface import get_obs_md
@@ -31,46 +32,50 @@ class hostImage(instCatUtils):
 
     def format_catalog(self, df_line, fits_file_name, image_dir):
         """
-        Formats the output instance catalog to include entries for the FITS 
+        Formats the output instance catalog to include entries for the FITS
         stamps produced by generate_lensed_host_***.py
-		
-		Parameters: 
+
+		Parameters:
 		-----------
 		df_line: string
 			pandas data frame line
 		fits_file_name: string
 			the filename of the FITS stamp
-		image_dir: string 
-			the location of the FITS stamps 
+		image_dir: string
+			the location of the FITS stamps
 		Returns:
 		-----------
 		cat_str: a string containing the line of parameters to go into an instance file
         """
-
-        fits_info = fits_file_name.split('_')
-        lens_id = np.int(fits_info[0])
-        sys_magNorm_list = np.array(fits_info[1:-1], dtype=np.float)
-        sys_magNorm = sys_magNorm_list[self.bandpass_lookup[self.bandpass]]
-        gal_type = fits_info[-1].split('.')[0]
+        with fits.open(os.path.join(image_dir, fits_file_name)) as hdus:
+            lens_id = hdus[0].header['LENS_ID']
+            sys_magNorm_list = [hdus[0].header[f'MAGNORM{_}'] for _ in 'UGRIZY']
+            sys_magNorm = sys_magNorm_list[self.bandpass_lookup[self.bandpass]]
+            gal_type = hdus[0].header['GALTYPE'].strip()
 
         if gal_type == 'bulge':
-            sys_id = str(lens_id) + '_b'
+            sys_id = lens_id + '_b'
         elif gal_type == 'disk':
-            sys_id = str(lens_id) + '_d'
+            sys_id = lens_id + '_d'
 
-        cat_str = 'object %s %f %f %f %s %f 0 0 0 0 0 %s 0.01 0 CCM %f %f CCM %f %f\n' % (sys_id,
-                                                                      df_line['ra_lens'],
-                                                                      df_line['dec_lens'],
-                                                                      sys_magNorm,
-                                                                      df_line['sed_%s_host' % gal_type].decode('utf-8'),
-                                                                      df_line['redshift'],
-                                                                      os.path.basename(str(image_dir))+'/'+fits_file_name,
-                                                                      df_line['av_internal_%s' % gal_type],
-                                                                      df_line['rv_internal_%s' % gal_type],
-                                                                      df_line['av_mw'],
-                                                                      df_line['rv_mw'])
+        sed_file = df_line['sed_%s_host' % gal_type]
+        if isinstance(sed_file, bytes):
+            sed_file = sed_file.decode('utf-8')
+        else:
+            sed_file = sed_file.lstrip('b').strip("'")
+        cat_str = 'object %s %f %f %f %s %f 0 0 0 0 0 %s 0.01 0 CCM %f %f CCM %f %f\n'\
+                  % (sys_id,
+                     df_line['ra_lens'],
+                     df_line['dec_lens'],
+                     sys_magNorm,
+                     sed_file,
+                     df_line['redshift'],
+                     os.path.basename(str(image_dir))+'/'+fits_file_name,
+                     df_line['av_internal_%s' % gal_type],
+                     df_line['rv_internal_%s' % gal_type],
+                     df_line['av_mw'],
+                     df_line['rv_mw'])
 
-       
         return cat_str
 
     def write_host_cat(self, image_dir, host_df, output_cat, append=False):
@@ -78,16 +83,17 @@ class hostImage(instCatUtils):
         Parameters:
         -----------
         image_dir: string
-            the location of the FITS stamps 
+            the location of the FITS stamps
         host_df: pandas dataframe
             the agn/sne host truth catalog in pandas dataframe format
         output_cat: string
             the location of the output instance catalogs """
-        
+
         ang_sep_list = []
         image_list = os.listdir(image_dir)
-        image_ids = np.array([image_name.split('_')[0] for image_name in image_list], dtype=np.int)
-        
+        image_ids = np.array(['_'.join(image_name.split('_')[:4])
+                              for image_name in image_list], dtype=str)
+
         for sys_ra, sys_dec in zip(host_df['ra_lens'], host_df['dec_lens']):
             ang_sep_list.append(angularSeparation(sys_ra, sys_dec, self.ra, self.dec))
 
@@ -139,7 +145,7 @@ if __name__ == "__main__":
                         help='directory with the lensed host stamps')
     parser.add_argument('--file_out', type=str,
                         help='filename of instance catalog written')
-    
+
     args = parser.parse_args()
 
     host_truth_db = create_engine('sqlite:///%s' % args.host_truth_cat, echo=False)
@@ -166,4 +172,3 @@ if __name__ == "__main__":
                                   args.file_out, append=True)
     sne_host_image.write_host_cat(os.path.join(args.fits_stamp_dir, 'sne_lensed_bulges'), sne_host_truth_cat,
                                   args.file_out, append=True)
-    
