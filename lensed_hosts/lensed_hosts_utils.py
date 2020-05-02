@@ -297,7 +297,7 @@ class LensedHostGenerator:
                     'xl2': 0,
                     'ql': 1.0 - row['ellip_lens'],
                     'vd': row['vel_disp_lenscat'],
-                    'phl': row['position_angle_y'],
+                    'phl': row['phie_lens'],
                     'gamma': row['gamma_lenscat'],
                     'phg': row['phig_lenscat'],
                     'zl': row['redshift_y'],
