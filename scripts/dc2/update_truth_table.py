@@ -35,7 +35,7 @@ def parse_args():
 
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_dir', help='directory of the original truth tables', default='./example_truth_050120')
+    parser.add_argument('--input_dir', help='directory of the original truth tables (and the OM10 catalog)', default='./example_truth_050120')
     args = parser.parse_args()
     return args
 
@@ -100,7 +100,7 @@ def main():
     src_light_df['position_angle_rad'] = 0.5*np.deg2rad(src_light_df['position_angle'])
 
     # Temporarily read in OM10 for testing (to restore OM10 lens redshift)
-    om10_path = '/home/jwp/stage/sl/SLSprinkler/image_verification/om10_qso_mock.fits'
+    om10_path = os.path.join(input_dir, 'om10_qso_mock.fits')
     om10 = fits.open(om10_path)[1].data
     col_names = ['LENSID', 'ELLIP', 'PHIE', 'GAMMA', 'PHIG', 'ZLENS', 'ZSRC', 'VELDISP', 'XSRC', 'YSRC', 'NIMG',]
     df_data = {}
