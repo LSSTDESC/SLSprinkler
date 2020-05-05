@@ -12,8 +12,76 @@ import lenstronomy.Util.param_util as param_util
 from lenstronomy.Cosmo.lens_cosmo import LensCosmo
 from baobab.sim_utils import instantiate_PSF_models, get_PSF_model
 from scipy.interpolate import interp1d
+from lenstronomy.LensModel.lens_model import LensModel
+from lenstronomy.LensModel.lens_model_extensions import LensModelExtensions
+from lenstronomy.LensModel.Solver.lens_equation_solver import LensEquationSolver
+from lenstronomy.Cosmo.lens_cosmo import LensCosmo
+from lenstronomy.Util import constants
+from astropy.cosmology import FlatLambdaCDM
+from  lenstronomy.Plots import lens_plot
+import lenstronomy.Util.util as util
+import lenstronomy.Util.simulation_util as sim_util
+import matplotlib.pyplot as plt
+import numpy as np
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from lenstronomy.LensModel.lens_model_extensions import LensModelExtensions
+from lenstronomy.Data.imaging_data import ImageData
+from lenstronomy.Plots import plot_util
+import scipy.ndimage as ndimage
+from lenstronomy.LensModel.Solver.lens_equation_solver import LensEquationSolver
 
-def to_csv(truth_db_path, dest_dir='.'):
+
+#TODO define coordinate grid beforehand, e.g. kwargs_data
+def lens_model_plot_custom(image, ax, lensModel, kwargs_lens, numPix=500, deltaPix=0.01, sourcePos_x=0, sourcePos_y=0, point_source=False, with_caustics=False):
+    """
+    Overlay the critical curves and caustics over the lensed image
+
+    :param ax:
+    :param kwargs_lens:
+    :param numPix:
+    :param deltaPix:
+    :return:
+    """
+    kwargs_data = sim_util.data_configure_simple(numPix, deltaPix)
+    data = ImageData(**kwargs_data)
+    _coords = data
+    _frame_size = numPix * deltaPix
+    x_grid, y_grid = data.pixel_coordinates
+    lensModelExt = LensModelExtensions(lensModel)
+    #ra_crit_list, dec_crit_list, ra_caustic_list, dec_caustic_list = lensModelExt.critical_curve_caustics(
+    #    kwargs_lens, compute_window=_frame_size, grid_scale=deltaPix/2.)
+    #x_grid1d = util.image2array(x_grid)
+    #y_grid1d = util.image2array(y_grid)
+    #kappa_result = lensModel.kappa(x_grid1d, y_grid1d, kwargs_lens)
+    #kappa_result = util.array2image(kappa_result)
+    #im = ax.matshow(np.log10(kappa_result), origin='lower', extent=[0, _frame_size, 0, _frame_size], cmap='Greys',vmin=-1, vmax=1) #, cmap=self._cmap, vmin=v_min, vmax=v_max)
+    _ = ax.matshow(image, origin='lower', extent=[0, _frame_size, 0, _frame_size])
+    if with_caustics is True:
+        ra_crit_list, dec_crit_list = lensModelExt.critical_curve_tiling(kwargs_lens, compute_window=_frame_size, start_scale=deltaPix, max_order=20)
+        ra_caustic_list, dec_caustic_list = lensModel.ray_shooting(ra_crit_list, dec_crit_list, kwargs_lens)
+        plot_util.plot_line_set(ax, _coords, ra_caustic_list, dec_caustic_list, color='y')
+        plot_util.plot_line_set(ax, _coords, ra_crit_list, dec_crit_list, color='r')
+    if point_source:
+        solver = LensEquationSolver(lensModel)
+        theta_x, theta_y = solver.image_position_from_source(sourcePos_x, sourcePos_y, kwargs_lens,
+                                                             min_distance=deltaPix, search_window=deltaPix*numPix)
+        mag_images = lensModel.magnification(theta_x, theta_y, kwargs_lens)
+        x_image, y_image = _coords.map_coord2pix(theta_x, theta_y)
+        abc_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+        for i in range(len(x_image)):
+            x_ = (x_image[i] + 0.5) * deltaPix
+            y_ = (y_image[i] + 0.5) * deltaPix
+            ax.plot(x_, y_, 'dk', markersize=4*(1 + np.log(np.abs(mag_images[i]))), alpha=0.5)
+            ax.text(x_, y_, abc_list[i], fontsize=20, color='k')
+        x_source, y_source = _coords.map_coord2pix(sourcePos_x, sourcePos_y)
+        ax.plot((x_source + 0.5) * deltaPix, (y_source + 0.5) * deltaPix, '*r', markersize=5)
+    #ax.plot(numPix * deltaPix*0.5 + pred['lens_mass_center_x'] + pred['src_light_center_x'], numPix * deltaPix*0.5 + pred['lens_mass_center_y'] + pred['src_light_center_y'], '*k', markersize=5)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    ax.autoscale(False)
+    return ax
+
+def to_csv(truth_db_path, dest_dir='.', table_suffix=''):
     """Dumps sqlite3 files of the truth tables as csv files
 
     Parameters
@@ -29,7 +97,7 @@ def to_csv(truth_db_path, dest_dir='.'):
     for table_name in tables:
         table_name = table_name[0]
         table = pd.read_sql_query("SELECT * from %s" % table_name, db)
-        table.to_csv(os.path.join(dest_dir, table_name + '.csv'), index=False)
+        table.to_csv(os.path.join(dest_dir, table_name + '{:s}.csv'.format(table_suffix)), index=False)
     cursor.close()
     db.close()
 
@@ -51,7 +119,7 @@ def get_lambda_factor(ellip):
         the lambda factor with which to scale theta_E
 
     """
-    e_tmp, lef_tmp = np.loadtxt("../../data/ell_lef.dat", comments='#', usecols=(0,1), unpack=True)
+    e_tmp, lef_tmp = np.loadtxt('/home/jwp/stage/sl/LatestSLSprinkler/data/ell_lef.dat', comments='#', usecols=(0,1), unpack=True)
     interpolated_lambdas = interp1d(e_tmp, lef_tmp, kind='linear')
     return interpolated_lambdas(ellip)
 
@@ -104,11 +172,15 @@ def get_lens_params(lens_info, z_src, cosmo):
     lens_cosmo = LensCosmo(z_lens=lens_info['redshift'], z_source=z_src, cosmo=cosmo)
     theta_E = lens_cosmo.sis_sigma_v2theta_E(lens_info['vel_disp_lenscat'])
     lam = get_lambda_factor(lens_info['ellip_lens'])
+    # I removed lam because lenstronomy accepts the spherically-averaged Einstein radius as input.
+    phi, q = param_util.ellipticity2phi_q(lens_info['e1_lens'], lens_info['e2_lens'])
+    # Factor converting the grav lens ellipticity convention (square average) to lenstronomy's (product average)
+    gravlens_to_lenstronomy = np.sqrt((1.0 + q**2.0)/(2.0*q))
     sie_mass = dict(
                       center_x=0.0,
                       center_y=0.0,
                       #s_scale=0.0,
-                      theta_E=theta_E*lam,
+                      theta_E=theta_E*gravlens_to_lenstronomy,
                       e1=lens_info['e1_lens'],
                       e2=lens_info['e2_lens']
                       )
