@@ -19,7 +19,7 @@ class ExtraGalacticVariabilityModels(Variability):
     A mixin providing the model for AGN variability.
     """
 
-    _agn_walk_start_date = 58580.0
+    _agn_walk_start_date = 58550.0
     _agn_threads = 1
     # Make the following class attribute a list so that we can modify
     # it globally for all subclasses from the top-level code.
