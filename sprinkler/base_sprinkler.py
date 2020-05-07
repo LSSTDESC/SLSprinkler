@@ -6,147 +6,71 @@ __all__ = ['BaseSprinkler']
 
 class BaseSprinkler():
 
-    def __init__(self,
-                 gl_agn_cat, glagn_reader,
-                 gl_sne_cat, glsne_reader,
-                 gal_cat, gal_reader,
-                 avoid_gal_ids=None):
+    def calc_mu_e(self, app_mag, radius_arcsec, redshift):
 
-        self.gl_agn_cat = pd.DataFrame(glagn_reader(gl_agn_cat).load_catalog())
-        self.gl_sne_cat = pd.DataFrame(glsne_reader(gl_sne_cat).load_catalog())
-        self.gal_cat = pd.DataFrame(gal_reader(gal_cat).load_catalog())
+        """
+        Calculate the mu_e parameter using Eq. 7 in Hyde and Bernardi 2009
 
-        self.avoid_gal_ids = avoid_gal_ids
+        Parameters
+        ----------
 
-    def find_possible_match_agn(self, gal_cat):
+        app_mag: float
+        Apparent observed LSST r-band magnitude
 
-        # Default is to match based solely upon redshift
-        
-        gal_z = gal_cat['redshift'].values
-        
-        agn_match_idx = []
-        for gal_z_on in gal_z:
-            w = np.where((np.abs(np.log10(self.gl_agn_cat['z_src']) -
-                                 np.log10(gal_z_on)) <= 0.1))
-            agn_match_idx.append(w[0])
-            
-        return agn_match_idx
+        radius_arcsec: float
+        Galaxy radius in arcsec. We use the bulge radius since we want to look at large elliptical galaxies.
 
-    def assign_matches_agn(self, agn_gals, rand_state):
-        
-        agn_match_idx = self.find_possible_match_agn(agn_gals)
-            
-        sprinkled_agn_gal_rows = []
-        sprinkled_gl_agn_cat_rows = []
+        redshift: float
+        Galaxy redshift
 
-        for i, agn_cat_idx in list(enumerate(agn_match_idx)):
+        Returns
+        -------
 
-            agn_idx_keep = [x for x in agn_cat_idx
-                            if x not in sprinkled_gl_agn_cat_rows]
+        mu_e: float
+        Mu_e parameter for Fundamental Plane
+        """
 
-            if len(agn_idx_keep) == 0:
-                continue
+        mu_e = app_mag + 5*np.log10(radius_arcsec) + 2.5*np.log10(2*np.pi) - \
+            10*np.log10(1+redshift)
 
-            # Draw probability that galaxy is sprinkled
-            agn_density = self.agn_density(agn_gals.iloc[i])
+        return mu_e
 
-            density_draw = rand_state.uniform()
-            if density_draw <= agn_density:
-                sprinkled_gl_agn_cat_rows.append(
-                    rand_state.choice(agn_idx_keep))
-                sprinkled_agn_gal_rows.append(i)
+    def calc_velocity_dispersion(self, radius, mu_e):
 
-        return sprinkled_agn_gal_rows, sprinkled_gl_agn_cat_rows
+        """
+        Calculate velocity dispersion using Fundamental Plane relation in
+        Equation 6 of Hyde and Bernardi 2009.
 
-    def agn_density(self, agn_gal_row):
+        a, b, c coefficient values taken from Table 2 in same paper,
+        orthogonal for the r-band
 
-        return 1.0
+        We include the intrinsic error for the r-band orthogonal values
+        from the table with an rms of 0.0578
 
-    def sprinkle_agn(self, rand_state=None):
+        Parameters
+        ----------
 
-        if rand_state is None and type(rand_state) != int:
-            rand_state = np.random.RandomState(49)
-        elif rand_state is None and type(rand_state) == int:
-            rand_state = np.random.RandomState(rand_state)
+        radius: float
+        Galaxy radius in kpc.
 
-        agn_gals = self.gal_cat.query('magnorm_agn > -99')
-        agn_ids = agn_gals['galaxy_id'].values
-        if self.avoid_gal_ids is not None:
-            agn_gals = agn_gals.iloc[[x for x in np.arange(len(agn_ids))
-                                      if agn_ids[x] not in self.avoid_gal_ids]]
-                
-        sprinkled_agn_gal_rows, sprinkled_gl_agn_cat_rows = \
-            self.assign_matches_agn(agn_gals, rand_state)
+        mu_e: float
+        Mu_e parameter calculated using `calc_mu_e` function
 
-        agn_hosts = agn_gals.iloc[sprinkled_agn_gal_rows]
-        agn_sys_cat = self.gl_agn_cat.iloc[sprinkled_gl_agn_cat_rows]
+        Returns
+        -------
 
-        return agn_hosts, agn_sys_cat
+        sigma_fp: float
+        Velocity Dispersion in km/s for galaxies
+        """
 
-    def find_possible_match_sne(self, gal_cat):
+        a = 1.4335
+        b = 0.3150
+        c = -8.8979
 
-        # Default is to match based solely upon redshift
+        rand_state = np.random.RandomState(seed=88)
 
-        gal_z = gal_cat['redshift'].values
+        log_sigma_fp = (np.log10(radius) - b*mu_e - c)/a
+        orthog_r_err = rand_state.normal(scale=0.0578, size=len(log_sigma_fp))
+        log_sigma_fp += orthog_r_err
 
-        sne_match_idx = []
-        for gal_z_on in gal_z:
-            w = np.where((np.abs(np.log10(self.gl_sne_cat['z_src']) -
-                                 np.log10(gal_z_on)) <= 0.1))
-            sne_match_idx.append(w[0])
-            
-        return sne_match_idx
-    
-    def assign_matches_sne(self, sne_gals, rand_state):
-
-        sne_match_idx = self.find_possible_match_sne(sne_gals)
-        
-        sprinkled_sne_gal_rows = []
-        sprinkled_gl_sne_cat_rows = []
-
-        for i, sne_cat_idx in list(enumerate(sne_match_idx)):
-            
-            sne_idx_keep = [x for x in sne_cat_idx
-                            if x not in sprinkled_gl_sne_cat_rows]
-
-            if len(sne_idx_keep) == 0:
-                continue   
-            
-            # Draw probability that galaxy is sprinkled
-            sne_density = self.sne_density(sne_gals.iloc[i])
-
-            density_draw = rand_state.uniform()
-            if density_draw <= sne_density:                        
-                sprinkled_gl_sne_cat_rows.append(
-                    rand_state.choice(sne_idx_keep))
-                sprinkled_sne_gal_rows.append(i)
-            
-        return sprinkled_sne_gal_rows, sprinkled_gl_sne_cat_rows
-
-    def sne_density(self, sne_gal_row):
-
-        return 1.0
-
-    def sprinkle_sne(self, sne_density=1.0, rand_state=None):
-
-        if rand_state is None and type(rand_state) != int:
-            rand_state = np.random.RandomState(49)
-        elif rand_state is None and type(rand_state) == int:
-            rand_state = np.random.RandomState(rand_state)
-
-        # Get rid of galaxies with no host type
-        # (we set type to None when they are too small)
-        sne_gals = self.gal_cat.iloc[np.where(self.gal_cat['gal_type'] !=
-                                              'None')]
-        sne_ids = sne_gals['galaxy_id'].values
-        if self.avoid_gal_ids is not None:
-            sne_gals = sne_gals.iloc[[x for x in np.arange(len(sne_ids))
-                                      if sne_ids[x] not in self.avoid_gal_ids]]
-
-        sprinkled_sne_gal_rows, sprinkled_gl_sne_cat_rows = \
-            self.assign_matches_sne(sne_gals, rand_state)
-                
-        sne_hosts = sne_gals.iloc[sprinkled_sne_gal_rows]
-        sne_sys_cat = self.gl_sne_cat.iloc[sprinkled_gl_sne_cat_rows]
-
-        return sne_hosts, sne_sys_cat
+        return np.power(10, log_sigma_fp)
