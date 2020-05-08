@@ -43,7 +43,7 @@ def main():
     args = parse_args()
     input_dir = args.datadir
     output_dir = args.outdir
-    object_type = 'agn'
+    object_type = args.object_type
     # Convert DB files into csv
     io_utils.to_csv(os.path.join(input_dir, 'lens_truth.db'), input_dir)
     io_utils.to_csv(os.path.join(input_dir, 'host_truth.db'), input_dir)
