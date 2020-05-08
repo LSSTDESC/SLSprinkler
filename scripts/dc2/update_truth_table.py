@@ -5,7 +5,7 @@ This script updates the lensing observables such as time delays and magnificatio
 Example
 -------
 To use the default settings, run this script from the root of the repo with the required `object_type` argument::
-    
+
     $ python update_truth_table.py agn
 
 The fits files will be generated in the original `datadir`.
@@ -16,6 +16,7 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
+from sqlalchemy import create_engine
 from astropy.cosmology import WMAP7, wCDM
 from lenstronomy.Analysis.td_cosmography import TDCosmography
 from lenstronomy.LensModel.lens_model import LensModel
@@ -43,14 +44,12 @@ def main():
     args = parse_args()
     input_dir = args.datadir
     object_type = args.object_type
-    # Convert DB files into csv
-    io_utils.to_csv(os.path.join(input_dir, 'lens_truth.db'), input_dir)
-    io_utils.to_csv(os.path.join(input_dir, f'lensed_{object_type}_truth.db'), input_dir)
-    io_utils.to_csv(os.path.join(input_dir, 'host_truth.db'), input_dir)
-    # Convert to dataframes for easy manipulation
-    lens_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_lens.csv'), index_col=None) # lens mass
-    ps_df = pd.read_csv(os.path.join(input_dir, f'lensed_{object_type}.csv'), index_col=None) # AGN light 
-    src_light_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_hosts.csv'), index_col=None) # Host galaxy light
+    # Load DB files as dataframes
+    lens_df = pd.read_sql('%s_lens' % object_type, os.path.join('sqlite:///', input_dir, 'lens_truth.db'), index_col=0)
+    ps_df = pd.read_sql('lensed_%s' % object_type,
+                        os.path.join('sqlite:///', input_dir, 'lensed_%s_truth.db' % object_type), index_col=0)
+    src_light_df = pd.read_sql('%s_hosts' % object_type,
+                               os.path.join('sqlite:///', input_dir, 'host_truth.db'), index_col=0)
 
     #####################
     # Model assumptions #
@@ -82,8 +81,8 @@ def main():
         x_lens = lens_info['ra_lens'] # absolute position in rad
         y_lens = lens_info['dec_lens']
         # FIXME: further adjustment needed here for the SNe, as the SNe are offset from the host center
-        x_src = src_light_info['x_src'] # defined relative to lens center
-        y_src = src_light_info['y_src'] 
+        x_src = ps_info['x_%s' % object_type].values[0] # defined relative to lens center
+        y_src = ps_info['y_%s' % object_type].values[0]
 
         #######################
         # Solve lens equation #
@@ -97,13 +96,13 @@ def main():
                                                           numImages=4,
                                                           search_window=num_pix*pixel_scale, # default is 5
                                                           precision_limit=10**(-10) # default
-                                                          ) 
+                                                          )
         magnification = np.abs(lens_mass_model.magnification(x_image, y_image, kwargs=kwargs_lens_mass))
         td_cosmo = TDCosmography(z_lens, z_src, kwargs_model, cosmo_fiducial=cosmo)
         ps_kwargs = [{'ra_image': x_image, 'dec_image': y_image}]
         time_delays = td_cosmo.time_delays(kwargs_lens_mass, ps_kwargs, kappa_ext=0.0)
         n_img = len(x_image)
-            
+
         #################################
         # Update lensed AGN truth table #
         #################################
@@ -114,7 +113,7 @@ def main():
         # Reorder the existing images by increasing dec to enforce a consistent image ordering system
         # Only 'unique_id', 'image_number', ra', 'dec', 't_delay', 'magnification' are affected by the reordering
         increasing_dec_i = np.argsort(dec_image_abs)
-        ps_info['unique_id'] = ['{:s}_{:d}'.format(ps_info.iloc[0]['dc2_sys_id'], img_i) for img_i in range(n_img)] 
+        ps_info['unique_id'] = ['{:s}_{:d}'.format(ps_info.iloc[0]['dc2_sys_id'], img_i) for img_i in range(n_img)]
         ps_info['image_number'] = np.arange(n_img)
         ps_info['ra'] = ra_image_abs[increasing_dec_i]
         ps_info['dec'] = dec_image_abs[increasing_dec_i]
@@ -131,8 +130,8 @@ def main():
     ps_df.sort_values(['dc2_sys_id_int', 'image_number'], axis=0, inplace=True)
     ps_df.drop(['dc2_sys_id_int'], axis=1, inplace=True)
     # Export to original file format
-    ps_df.to_csv('new_ps_df.csv', index=False)
-    io_utils.export_db(ps_df, input_dir, f'updated_lensed_{object_type}_truth.db', f'lensed_{object_type}', overwrite=True)
+    engine = create_engine(os.path.join('sqlite:///', input_dir, 'updated_lensed_%s_truth.db' % object_type), echo=False)
+    ps_df.to_sql('lensed_%s' % object_type, con=engine)
     progress.close()
 
 if __name__ == '__main__':

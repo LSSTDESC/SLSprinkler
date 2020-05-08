@@ -771,6 +771,8 @@ class DC2Sprinkler(BaseSprinkler):
                 ra_lens = matched_lenses.iloc[i]['ra']
                 dec_lens = matched_lenses.iloc[i]['dec']
                 id_lens = matched_lenses.iloc[i]['galaxy_id']
+                x_src = matched_sys_cat.iloc[i]['x_src']
+                y_src = matched_sys_cat.iloc[i]['y_src']
                 delta_ra = np.radians(matched_sys_cat.iloc[i]['x_img'][j] / 3600.0)
                 delta_dec = np.radians(matched_sys_cat.iloc[i]['y_img'][j] / 3600.0)
                 ra = ra_lens + delta_ra/np.cos(dec_lens)
@@ -809,7 +811,7 @@ class DC2Sprinkler(BaseSprinkler):
 
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
 
-                new_row = [gal_unique_id, ra, dec,
+                new_row = [gal_unique_id, ra, dec, x_src, y_src,
                         redshift, t_delay, magnorm,
                         agn_flux_mw['u'], agn_flux_mw['g'], agn_flux_mw['r'],
                         agn_flux_mw['i'], agn_flux_mw['z'], agn_flux_mw['y'],
@@ -825,7 +827,7 @@ class DC2Sprinkler(BaseSprinkler):
                 new_entries.append(new_row)
 
         agn_df = pd.DataFrame(new_entries,
-                            columns=['unique_id', 'ra', 'dec',
+                            columns=['unique_id', 'ra', 'dec', 'x_agn', 'y_agn',
                                     'redshift', 't_delay', 'magnorm',
                                     'flux_u_agn', 'flux_g_agn', 'flux_r_agn',
                                     'flux_i_agn', 'flux_z_agn', 'flux_y_agn',
@@ -930,7 +932,7 @@ class DC2Sprinkler(BaseSprinkler):
                 new_entries.append(new_row)
 
         sne_df = pd.DataFrame(new_entries,
-                            columns=['unique_id', 'gal_unq_id', 'ra', 'dec', 'sn_x', 'sn_y',
+                            columns=['unique_id', 'gal_unq_id', 'ra', 'dec', 'x_sne', 'y_sne',
                                     'x_img', 'y_img', 't0', 't_delay', 'MB', 'magnification',
                                     'x0', 'x1', 'c', 'host_type', 'redshift',
                                     'av_mw', 'rv_mw', 'lens_id',

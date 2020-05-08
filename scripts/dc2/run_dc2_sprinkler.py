@@ -344,7 +344,7 @@ def run_dc2_sprinkler(dc2_lenses, dc2_agn_hosts, dc2_sne_hosts,
 if __name__ == '__main__':
 
     catalog_version = 'cosmoDC2_v1.1.4_image_addon_knots'
-    agn_db = '/global/cscratch1/sd/jchiang8/desc/sims_GCRCatSimInterface/work/2020-02-14/agn_cosmoDC2_v1.1.4.db'
+    agn_db = '/global/cfs/cdirs/lsst/projecta/lsst/groups/SSim/DC2/cosmoDC2_v1.1.4/agn_cosmoDC2_v1.1.4.db'
     sed_dir = '/global/projecta/projectdirs/lsst/groups/SSim/DC2/cosmoDC2_v1.1.4/sedLookup'
 
     parser = argparse.ArgumentParser(
