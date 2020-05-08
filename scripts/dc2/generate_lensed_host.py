@@ -3,9 +3,9 @@
 
 Example
 -------
-To use the default settings, run this script from the root of the repo::
+To use the default settings, run this script from the root of the repo with the required `object_type` argument::
     
-    $ python generate_lensed_host_agn.py
+    $ python generate_lensed_host_agn.py agn
 
 The fits files will be generated in the `outputs` folder.
 
@@ -48,7 +48,7 @@ def main():
     io_utils.to_csv(os.path.join(input_dir, 'lens_truth.db'), input_dir)
     io_utils.to_csv(os.path.join(input_dir, 'host_truth.db'), input_dir)
     # Convert to dataframes for easy manipulation
-    lens_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_lens.csv'), index_col=None) # SIE lens mass
+    lens_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_lens.csv'), index_col=None) # lens mass
     src_light_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_hosts.csv'), index_col=None) # Host galaxy light
     # Instantiate tool for imaging our hosts
     lensed_host_imager = lensing_utils.LensedHostImager(args.pixel_size, args.num_pix)
