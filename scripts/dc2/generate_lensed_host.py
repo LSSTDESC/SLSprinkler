@@ -53,6 +53,10 @@ def main():
     # Instantiate tool for imaging our hosts
     lensed_host_imager = lensing_utils.LensedHostImager(args.pixel_size, args.num_pix)
     sys_ids = lens_df['lens_cat_sys_id'].unique()
+    lens_id = dict()
+    for dc2_sys_id, sys_id in zip(lens_df['dc2_sys_id'], lens_df['lens_cat_sys_id']):
+        tokens = dc2_sys_id.split('_')
+        lens_id[sys_id] = '_'.join((tokens[0], 'host', tokens[1], '0'))
     progress = tqdm(total=len(sys_ids))
     for i, sys_id in enumerate(sys_ids):
         lens_info = lens_df.loc[lens_df['lens_cat_sys_id']==sys_id].squeeze()
@@ -64,10 +68,10 @@ def main():
         disk_img, disk_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'disk')
 
         # Export images with metadata
-        bulge_out_path = os.path.join(output_dir, f'{object_type}_lensed_bulges', f"{sys_id}_bulge.fits")
-        disk_out_path = os.path.join(output_dir, f'{object_type}_lensed_disks', f"{sys_id}_disk.fits")
-        io_utils.write_fits_stamp(bulge_img, bulge_features['magnorms'], sys_id, 'bulge', args.pixel_size, bulge_out_path)
-        io_utils.write_fits_stamp(disk_img, disk_features['magnorms'], sys_id, 'disk', args.pixel_size, disk_out_path)
+        bulge_out_path = os.path.join(output_dir, f'{object_type}_lensed_bulges', f"{lens_id[sys_id]}_bulge.fits")
+        disk_out_path = os.path.join(output_dir, f'{object_type}_lensed_disks', f"{lens_id[sys_id]}_disk.fits")
+        io_utils.write_fits_stamp(bulge_img, bulge_features['magnorms'], lens_id[sys_id], 'bulge', args.pixel_size, bulge_out_path)
+        io_utils.write_fits_stamp(disk_img, disk_features['magnorms'], lens_id[sys_id], 'disk', args.pixel_size, disk_out_path)
         progress.update(1)
     progress.close()
 
