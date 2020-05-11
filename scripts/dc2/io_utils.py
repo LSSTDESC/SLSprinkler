@@ -48,6 +48,7 @@ def export_db(dataframe, out_dir, out_fname, table_name, overwrite=False):
         os.remove(out_path)
     engine = create_engine('sqlite:///{:s}'.format(out_path), echo=False)
     dataframe.to_sql(table_name, con=engine, index=False)
+    engine.dispose()
     return None
 
 def boundary_max(data):
