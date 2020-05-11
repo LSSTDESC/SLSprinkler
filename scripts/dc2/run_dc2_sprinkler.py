@@ -386,6 +386,7 @@ if __name__ == '__main__':
     glsne_query = 'host_x < 1.25 and host_y < 1.25 and host_x > -1.25 and host_y > -1.25'
     glsne_merged_df = glsne_merged_df.query(glsne_query).reset_index(drop=True)
 
+    os.makedirs(args.output_dir, exist_ok=True)
     # Run Match and Truth Catalog Generation
     run_dc2_sprinkler(dc2_lenses, dc2_agn_hosts, dc2_sne_hosts,
                       om10_data, glsne_merged_df, args.output_dir)
