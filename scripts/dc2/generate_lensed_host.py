@@ -44,12 +44,11 @@ def main():
     input_dir = args.datadir
     output_dir = args.outdir
     object_type = args.object_type
-    # Convert DB files into csv
-    io_utils.to_csv(os.path.join(input_dir, 'lens_truth.db'), input_dir)
-    io_utils.to_csv(os.path.join(input_dir, 'host_truth.db'), input_dir)
     # Convert to dataframes for easy manipulation
-    lens_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_lens.csv'), index_col=None) # lens mass
-    src_light_df = pd.read_csv(os.path.join(input_dir, f'{object_type}_hosts.csv'), index_col=None) # Host galaxy light
+    lens_df = pd.read_sql('%s_lens' % object_type,
+                          os.path.join('sqlite:///', input_dir, 'lens_truth.db'), index_col=0)
+    src_light_df = pd.read_sql('%s_hosts' % object_type,
+                               os.path.join('sqlite:///', input_dir, 'host_truth.db'), index_col=0)
     # Instantiate tool for imaging our hosts
     lensed_host_imager = lensing_utils.LensedHostImager(args.pixel_size, args.num_pix)
     sys_ids = lens_df['lens_cat_sys_id'].unique()
@@ -58,7 +57,7 @@ def main():
         tokens = dc2_sys_id.split('_')
         lens_id[sys_id] = '_'.join((tokens[0], 'host', tokens[1], '0'))
     progress = tqdm(total=len(sys_ids))
-    for i, sys_id in enumerate(sys_ids):
+    for i, sys_id in enumerate(sys_ids[:5]):
         lens_info = lens_df.loc[lens_df['lens_cat_sys_id']==sys_id].squeeze()
         src_light_info = src_light_df.loc[src_light_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze() # arbitarily take the first lensed image, since the source properties are the same between the images
         # Get images and some metadata
@@ -66,7 +65,6 @@ def main():
         z_src = src_light_info['redshift']
         bulge_img, bulge_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'bulge')
         disk_img, disk_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'disk')
-
         # Export images with metadata
         bulge_out_path = os.path.join(output_dir, f'{object_type}_lensed_bulges', f"{lens_id[sys_id]}_bulge.fits")
         disk_out_path = os.path.join(output_dir, f'{object_type}_lensed_disks', f"{lens_id[sys_id]}_disk.fits")
