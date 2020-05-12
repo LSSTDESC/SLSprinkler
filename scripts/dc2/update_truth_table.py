@@ -16,7 +16,6 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-from sqlalchemy import create_engine
 from astropy.cosmology import WMAP7, wCDM
 from lenstronomy.Analysis.td_cosmography import TDCosmography
 from lenstronomy.LensModel.lens_model import LensModel
@@ -45,11 +44,9 @@ def main():
     input_dir = args.datadir
     object_type = args.object_type
     # Load DB files as dataframes
-    lens_df = pd.read_sql('%s_lens' % object_type, os.path.join('sqlite:///', input_dir, 'lens_truth.db'), index_col=0)
-    ps_df = pd.read_sql('lensed_%s' % object_type,
-                        os.path.join('sqlite:///', input_dir, 'lensed_%s_truth.db' % object_type), index_col=0)
-    src_light_df = pd.read_sql('%s_hosts' % object_type,
-                               os.path.join('sqlite:///', input_dir, 'host_truth.db'), index_col=0)
+    lens_df = pd.read_sql(f'{object_type}_lens', os.path.join('sqlite:///', input_dir, 'lens_truth.db'), index_col=0)
+    ps_df = pd.read_sql(f'lensed_{object_type}', os.path.join('sqlite:///', input_dir, f'lensed_{object_type}_truth.db'), index_col=0)
+    src_light_df = pd.read_sql(f'{object_type}_hosts', os.path.join('sqlite:///', input_dir, 'host_truth.db'), index_col=0)
 
     #####################
     # Model assumptions #
@@ -65,24 +62,25 @@ def main():
     kwargs_model['lens_model_list'] = ['SIE', 'SHEAR_GAMMA_PSI']
     kwargs_model['point_source_model_list'] = ['LENSED_POSITION']
     arcsec_to_deg = 1/3600.0
-
+    # Instantiate tool for imaging our hosts
+    lensed_host_imager = lensing_utils.LensedHostImager(pixel_scale, num_pix)
     sys_ids = lens_df['lens_cat_sys_id'].unique()
     progress = tqdm(total=len(sys_ids))
     for i, sys_id in enumerate(sys_ids):
         # Slice relevant params
         lens_info = lens_df[lens_df['lens_cat_sys_id']==sys_id].squeeze()
         ps_info = ps_df[ps_df['lens_cat_sys_id'] == sys_id].iloc[[0]].copy() # df of length 1
-        ps_info_full = ps_df[ps_df['lens_cat_sys_id'] == sys_id].copy() # of length 2 or 4
-        ps_df_index = ps_info_full[ps_info_full['lens_cat_sys_id'] == sys_id].index # length 2 or 4
+        #ps_info_full = ps_df[ps_df['lens_cat_sys_id'] == sys_id].copy() # df of length 2 or 4
+        ps_df_index = ps_df[ps_df['lens_cat_sys_id'] == sys_id].index # length 2 or 4
         ps_df.drop(ps_df_index, axis=0, inplace=True) # delete for now, will add back
         src_light_info = src_light_df.loc[src_light_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze() # arbitarily take the first lensed image, since the source properties are the same across the images
+        src_light_info_full = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].copy() # df of length 2 or 4
         z_lens = lens_info['redshift']
         z_src = src_light_info['redshift']
         x_lens = lens_info['ra_lens'] # absolute position in rad
         y_lens = lens_info['dec_lens']
-        # FIXME: further adjustment needed here for the SNe, as the SNe are offset from the host center
-        x_src = ps_info['x_%s' % object_type].values[0] # defined relative to lens center
-        y_src = ps_info['y_%s' % object_type].values[0]
+        x_src = ps_info[f'x_{object_type}'].values[0] # defined in arcsec wrt lens center
+        y_src = ps_info[f'y_{object_type}'].values[0]
 
         #######################
         # Solve lens equation #
@@ -124,14 +122,27 @@ def main():
         #ps_df.update(ps_info) # inplace op doesn't work when n_img is different from OM10
         ps_df = ps_df.append(ps_info, ignore_index=True, sort=False)
         ps_df.reset_index(drop=True, inplace=True) # to prevent duplicate indices
+
+        ###########################
+        # Update host truth table #
+        ###########################
+        bulge_img, bulge_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'bulge')
+        disk_img, disk_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'disk')
+        # Update magnorms based on lensed and unlensed flux
+        for band in list('ugrizy'):
+            src_light_info_full[f'magnorm_bulge_{band}'] = bulge_features['magnorms'][band]
+            src_light_info_full[f'magnorm_disk_{band}'] = disk_features['magnorms'][band]
+        #FIXME: flux values also need updating
+        src_light_df.update(src_light_info_full)
+
         progress.update(1)
     # Sort by dc2_sys_id and image number
     ps_df['dc2_sys_id_int'] = [int(sys_id.split('_')[-1]) for sys_id in ps_df['dc2_sys_id']]
     ps_df.sort_values(['dc2_sys_id_int', 'image_number'], axis=0, inplace=True)
     ps_df.drop(['dc2_sys_id_int'], axis=1, inplace=True)
-    # Export to original file format
-    engine = create_engine(os.path.join('sqlite:///', input_dir, 'updated_lensed_%s_truth.db' % object_type), echo=False)
-    ps_df.to_sql('lensed_%s' % object_type, con=engine)
+    # Export lensed_ps and host truth tables to original file format
+    io_utils.export_db(ps_df, input_dir, f'updated_lensed_{object_type}_truth.db', f'lensed_{object_type}', overwrite=True)
+    io_utils.export_db(src_light_df, input_dir, f'updated_host_truth.db', f'{object_type}_hosts', overwrite=True)
     progress.close()
 
 if __name__ == '__main__':
