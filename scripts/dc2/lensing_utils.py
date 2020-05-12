@@ -33,6 +33,7 @@ class LensedHostImager:
         self.cosmo = WMAP7 # DC2
         #self.cosmo = wCDM(H0=72.0, Om0=0.26, Ode0=0.74, w0=-1.0) # OM10
         self.src_light_model = LightModel(['SERSIC_ELLIPSE'])
+        self.cored_sersic_model = LightModel(['CORE_SERSIC'])
         self.bands = list('ugrizy')
 
     def get_image(self, lens_info, src_light_info, z_lens, z_src, bulge_or_disk):
@@ -43,6 +44,21 @@ class LensedHostImager:
         img /= np.max(img)
         dmag = -2.5*np.log10(img_features['total_magnification'])
         img_features['magnorms'] = {band: src_light_info[f'magnorm_{bulge_or_disk}_{band}'] + dmag for band in self.bands}
+        return img, img_features
+
+    def get_cored_image(self, lens_info, src_light_info, z_lens, z_src, bulge_or_disk):
+        """Render a lensed cored sersic
+
+        Note
+        ----
+        This method is only used to test the total magnification computation
+
+        """
+        lens_mass_model = LensModel(['SIE', 'SHEAR_GAMMA_PSI',], cosmo=self.cosmo, z_lens=z_lens, z_source=z_src)
+        lens_mass_kwargs = get_lens_params(lens_info, z_src=z_src, cosmo=self.cosmo)
+        src_light_kwargs = get_cored_sersic_params(src_light_info, bulge_or_disk=bulge_or_disk) 
+        img, img_features = generate_image(lens_mass_kwargs, src_light_kwargs, self.null_psf, self.data_api, lens_mass_model, self.cored_sersic_model)
+        img /= np.max(img)
         return img, img_features
 
 def get_unlensed_total_flux(kwargs_src_light_list, src_light_model):
@@ -107,8 +123,13 @@ def generate_image(kwargs_lens_mass, kwargs_src_light, psf_model, data_api, lens
     image_model = ImageModel(image_data, psf_model, lens_mass_model, src_light_model, None, None, kwargs_numerics=kwargs_numerics)
     # Compute total magnification
     lensed_total_flux = get_lensed_total_flux(kwargs_lens_mass, kwargs_src_light, image_model)
-    unlensed_total_flux = get_unlensed_total_flux(kwargs_src_light, src_light_model)
-    img_features['total_magnification'] = lensed_total_flux/unlensed_total_flux
+    img_features['lensed_total_flux'] = lensed_total_flux
+    try: # only runs for profiles that allow analytic integration
+        unlensed_total_flux = get_unlensed_total_flux(kwargs_src_light, src_light_model)
+        img_features['total_magnification'] = lensed_total_flux/unlensed_total_flux
+        img_features['unlensed_total_flux'] = unlensed_total_flux
+    except:
+        pass
     # Generate image for export
     img = image_model.image(kwargs_lens_mass, kwargs_src_light, None, None)
     img = np.maximum(0.0, img) # safeguard against negative pixel values
@@ -233,6 +254,37 @@ def get_src_light_params(src_light_info, bulge_or_disk='bulge'):
                      )
     return [sersic_host]
 
+def get_cored_sersic_params(src_light_info, bulge_or_disk='bulge'):
+    """Get Sersic parameters into a form Lenstronomy understands
+
+    Parameters
+    ----------
+    src_light_info : dict
+        Sersic host galaxy component (bulge or disk) parameters for a system
+    bulge_or_disk : str
+        galaxy component ('bulge' or 'disk')
+
+    """
+    phi_rad = 0.5*np.deg2rad(src_light_info['position_angle'])
+    n_sersic = src_light_info['sindex_{:s}'.format(bulge_or_disk)]
+    R_sersic = (src_light_info['major_axis_{:s}'.format(bulge_or_disk)]*src_light_info['minor_axis_{:s}'.format(bulge_or_disk)])**0.5
+    q_src = src_light_info['minor_axis_{:s}'.format(bulge_or_disk)]/src_light_info['major_axis_{:s}'.format(bulge_or_disk)]
+    e1_src, e2_src = param_util.phi_q2_ellipticity(phi_rad, q_src)
+
+    sersic_host = dict(
+                     amp=20.0, # doesn't matter, image gets rescaled anyway
+                     n_sersic=n_sersic,
+                     R_sersic=R_sersic,
+                     center_x=src_light_info['x_src'],
+                     center_y=src_light_info['y_src'],
+                     e1=e1_src,
+                     e2=e2_src,
+                     Re=0.1*R_sersic,
+                     gamma=0.5,
+                     max_R_frac=5.0,
+                     alpha=10.0,
+                     )
+    return [sersic_host]
 
 def lens_model_plot_custom(image, ax, lensModel, kwargs_lens, numPix=500, deltaPix=0.01, sourcePos_x=0, sourcePos_y=0, point_source=False, with_caustics=False):
     """
