@@ -61,7 +61,7 @@ class LensedHostImager:
         img /= np.max(img)
         return img, img_features
 
-def get_unlensed_total_flux(kwargs_src_light_list, src_light_model):
+def get_unlensed_total_flux_analytical(kwargs_src_light_list, src_light_model):
     """Compute the total flux of unlensed objects
 
     Parameter
@@ -96,6 +96,20 @@ def get_lensed_total_flux(kwargs_lens_mass, kwargs_src_light, image_model):
     lensed_total_flux = np.sum(lensed_src_image)
     return lensed_total_flux
 
+def get_unlensed_total_flux_numerical(kwargs_src_light, image_model):
+    """Compute the total flux of the unlensed image by rendering the source on a pixel grid
+
+    Returns
+    -------
+    float
+        the total lensed flux
+
+    """
+
+    unlensed_src_image = image_model.image(None, kwargs_src_light, None, None, lens_light_add=False)
+    unlensed_total_flux = np.sum(unlensed_src_image)
+    return unlensed_total_flux
+
 def generate_image(kwargs_lens_mass, kwargs_src_light, psf_model, data_api, lens_mass_model, src_light_model):
     """Generate the image of a lensed extended source from provided model and model parameters
 
@@ -120,18 +134,20 @@ def generate_image(kwargs_lens_mass, kwargs_src_light, psf_model, data_api, lens
     kwargs_numerics = {'supersampling_factor': 1}
     image_data = data_api.data_class
     # Instantiate image model
-    image_model = ImageModel(image_data, psf_model, lens_mass_model, src_light_model, None, None, kwargs_numerics=kwargs_numerics)
+    lensed_image_model = ImageModel(image_data, psf_model, lens_mass_model, src_light_model, None, None, kwargs_numerics=kwargs_numerics)
     # Compute total magnification
-    lensed_total_flux = get_lensed_total_flux(kwargs_lens_mass, kwargs_src_light, image_model)
+    lensed_total_flux = get_lensed_total_flux(kwargs_lens_mass, kwargs_src_light, lensed_image_model)
     img_features['lensed_total_flux'] = lensed_total_flux
-    try: # only runs for profiles that allow analytic integration
-        unlensed_total_flux = get_unlensed_total_flux(kwargs_src_light, src_light_model)
-        img_features['total_magnification'] = lensed_total_flux/unlensed_total_flux
-        img_features['unlensed_total_flux'] = unlensed_total_flux
-    except:
-        pass
+    #try: 
+    #unlensed_total_flux = get_unlenseD_total_flux_analytical(kwargs_src_light_list, src_light_model)
+    unlensed_image_model = ImageModel(image_data, psf_model, None, src_light_model, None, None, kwargs_numerics=kwargs_numerics)
+    unlensed_total_flux = get_unlensed_total_flux_numerical(kwargs_src_light, unlensed_image_model) # analytical only runs for profiles that allow analytic integration
+    img_features['total_magnification'] = lensed_total_flux/unlensed_total_flux
+    img_features['unlensed_total_flux'] = unlensed_total_flux
+    #except:
+    #    pass
     # Generate image for export
-    img = image_model.image(kwargs_lens_mass, kwargs_src_light, None, None)
+    img = lensed_image_model.image(kwargs_lens_mass, kwargs_src_light, None, None)
     img = np.maximum(0.0, img) # safeguard against negative pixel values
     return img, img_features
 

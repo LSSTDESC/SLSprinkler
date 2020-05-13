@@ -47,6 +47,9 @@ def main():
     lens_df = pd.read_sql(f'{object_type}_lens', os.path.join('sqlite:///', input_dir, 'lens_truth.db'), index_col=0)
     ps_df = pd.read_sql(f'lensed_{object_type}', os.path.join('sqlite:///', input_dir, f'lensed_{object_type}_truth.db'), index_col=0)
     src_light_df = pd.read_sql(f'{object_type}_hosts', os.path.join('sqlite:///', input_dir, 'host_truth.db'), index_col=0)
+    ps_df['total_magnification'] = 0.0 # init
+    src_light_df['total_magnification_bulge'] = 0.0 # init
+    src_light_df['total_magnification_disk'] = 0.0 # init
 
     #####################
     # Model assumptions #
@@ -120,6 +123,7 @@ def main():
         time_delays -= time_delays[0] # time delays relative to first image
         ps_info['t_delay'] = time_delays
         #ps_df.update(ps_info) # inplace op doesn't work when n_img is different from OM10
+        ps_info['total_magnification'] = np.sum(np.abs(magnification))
         ps_df = ps_df.append(ps_info, ignore_index=True, sort=False)
         ps_df.reset_index(drop=True, inplace=True) # to prevent duplicate indices
 
@@ -132,6 +136,8 @@ def main():
         for band in list('ugrizy'):
             src_light_info_full[f'magnorm_bulge_{band}'] = bulge_features['magnorms'][band]
             src_light_info_full[f'magnorm_disk_{band}'] = disk_features['magnorms'][band]
+        src_light_info_full['total_magnification_bulge'] = bulge_features['total_magnification']
+        src_light_info_full['total_magnification_disk'] = disk_features['total_magnification']
         #FIXME: flux values also need updating
         src_light_df.update(src_light_info_full)
 
