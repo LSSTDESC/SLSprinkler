@@ -4,6 +4,7 @@
 """
 
 import os
+import copy
 import numpy as np
 import sqlite3
 from sqlalchemy import create_engine
@@ -41,7 +42,7 @@ def export_db(dataframe, out_dir, out_fname, table_name, overwrite=False):
     out_fname : str
     table_name : str
     overwrite_existing : bool
-    
+
     """
     out_path = os.path.join(out_dir, out_fname)
     if overwrite is True and os.path.exists(out_path):
@@ -60,7 +61,8 @@ def boundary_max(data):
                                data[-1, :]))
     return np.max(boundary)
 
-def write_fits_stamp(data, magnorms, lens_id, galaxy_type, pixel_scale, outfile, overwrite=True):
+def write_fits_stamp(data, magnorms, lens_id, galaxy_type, pixel_scale, outfile, overwrite=True,
+                     underflow_frac=1e-12):
     """Write the given image as a fits stamp with relevant metadata
 
     Parameters
@@ -76,6 +78,8 @@ def write_fits_stamp(data, magnorms, lens_id, galaxy_type, pixel_scale, outfile,
     pixel_scale : float
     outfile : output file path
     overwrite : bool
+    underflow_frac: float [1e-12]
+        Set pixels to zero when they have values < underflow_frac*np.sum(data)
 
     """
 
@@ -88,7 +92,8 @@ def write_fits_stamp(data, magnorms, lens_id, galaxy_type, pixel_scale, outfile,
             raise RuntimeError(f'non-finite magnorm for {lens_id}')
     os.makedirs(os.path.dirname(os.path.abspath(outfile)), exist_ok=True)
     output = fits.HDUList(fits.PrimaryHDU())
-    output[0].data = data
+    output[0].data = copy.deepcopy(data)
+    output[0].data[data < underflow_frac*np.sum(data)] = 0
     output[0].header.set('LENS_ID', lens_id, 'Lens system ID')
     output[0].header.set('GALTYPE', galaxy_type, 'Galaxy component type')
     for band, magnorm in magnorms.items():

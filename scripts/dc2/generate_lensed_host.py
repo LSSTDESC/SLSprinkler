@@ -57,7 +57,7 @@ def main():
         tokens = dc2_sys_id.split('_')
         lens_id[sys_id] = '_'.join((tokens[0], 'host', tokens[1], '0'))
     progress = tqdm(total=len(sys_ids))
-    for i, sys_id in enumerate(sys_ids[:5]):
+    for i, sys_id in enumerate(sys_ids):
         lens_info = lens_df.loc[lens_df['lens_cat_sys_id']==sys_id].squeeze()
         src_light_info = src_light_df.loc[src_light_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze() # arbitarily take the first lensed image, since the source properties are the same between the images
         # Get images and some metadata
