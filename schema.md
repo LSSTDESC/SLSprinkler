@@ -47,5 +47,20 @@ Quantity Label | Unit | Definition
 ### Schema for `lensed_agn_truth.db`
 
 ### Schema for `host_truth.db`
+Quantity Label | Unit | Definition
+--- | --- | ---
+`lens_cat_sys_id` | - | Unique integer identifier for the lens system
+`dc2_sys_id` | - | Unique string identifier for the lens galaxy in cosmodc2
+`unique_id` | - | Unique string identifier for the lensed image of a hypothetical point source located at the host centroid in the source plane
+`x_src` | arcsec | RA of the unlensed host centroid offset from the lens centroid
+`y_src` | arcsec | dec of the unlensed host centroid offset from the lens centroid
+`x_img` | arcsec | RA of the lensed image of a hypothetical point source located at the host centroid, offset from the lens centroid
+`y_img` | arcsec | dec of the lensed image of a hypothetical point source located at the host centroid, offset from the lens centroid
+`ra_lens` | degree | RA of the lens galaxy centroid
+`dec_lens` | degree | dec of the lens galaxy centroid
+`ra_unlensed_host` | degree | RA of the unlensed host centroid
+`dec_unlensed_host` | degree | dec of the unlensed host centroid
+`ra_lensed_host` | degree | RA of the lensed image of a hypothetical point source located at the host centroid
+`dec_lensed_host` | degree | dec of the lensed image of a hypothetical point source located at the host centroid
 
 Please contact Ji Won Park @jiwoncpark with feedback or questions.
