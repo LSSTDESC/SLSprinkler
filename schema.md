@@ -56,11 +56,11 @@ Quantity Label | Unit | Definition
 `y_src` | arcsec | dec of the unlensed host centroid offset from the lens centroid
 `x_img` | arcsec | RA of the lensed image of a hypothetical point source located at the host centroid, offset from the lens centroid
 `y_img` | arcsec | dec of the lensed image of a hypothetical point source located at the host centroid, offset from the lens centroid
-`ra_lens` | rad | RA of the lens galaxy centroid
-`dec_lens` | rad | dec of the lens galaxy centroid
-`ra_host_unlensed` | rad | RA of the unlensed host centroid
-`dec_host_unlensed` | rad | dec of the unlensed host centroid
-`ra_host_lensed` | rad | RA of the lensed image of a hypothetical point source located at the host centroid
-`dec_host_lensed` | rad | dec of the lensed image of a hypothetical point source located at the host centroid
+`ra_lens` | degree | RA of the lens galaxy centroid
+`dec_lens` | degree | dec of the lens galaxy centroid
+`ra_host_unlensed` | degree | RA of the unlensed host centroid
+`dec_host_unlensed` | degree | dec of the unlensed host centroid
+`ra_host_lensed` | degree | RA of the lensed image of a hypothetical point source located at the host centroid
+`dec_host_lensed` | degree | dec of the lensed image of a hypothetical point source located at the host centroid
 
 Please contact Ji Won Park @jiwoncpark with feedback or questions.

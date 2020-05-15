@@ -118,8 +118,8 @@ def main():
         #################################
         ps_info = ps_info.loc[ps_info.index.repeat(n_img)] # replicate enough rows
         # Absolute image positions in rad
-        ra_image_abs = x_lens + np.radians(x_image*arcsec_to_deg)/np.cos(np.radians(y_lens))
-        dec_image_abs = y_lens + np.radians(y_image*arcsec_to_deg)
+        ra_image_abs = x_lens + x_image*arcsec_to_deg/np.cos(np.radians(y_lens))
+        dec_image_abs = y_lens + y_image*arcsec_to_deg
         # Reorder the existing images by increasing dec to enforce a consistent image ordering system
         # Only 'unique_id', 'image_number', ra', 'dec', 't_delay', 'magnification' are affected by the reordering
         increasing_dec_i = np.argsort(dec_image_abs)
@@ -162,8 +162,8 @@ def main():
                                                                   precision_limit=10**(-10) # default
                                                                   )
         # Absolute image positions in rad
-        ra_image_abs_host = x_lens + np.radians(x_image_host*arcsec_to_deg)/np.cos(np.radians(y_lens))
-        dec_image_abs_host = y_lens + np.radians(y_image_host*arcsec_to_deg)
+        ra_image_abs_host = x_lens + x_image_host*arcsec_to_deg/np.cos(np.radians(y_lens))
+        dec_image_abs_host = y_lens + y_image_host*arcsec_to_deg
         n_img_host = len(ra_image_abs)
         # Log the lensed/unlensed positions
         src_light_info = src_light_info.loc[src_light_info.index.repeat(n_img_host)] # replicate enough rows
