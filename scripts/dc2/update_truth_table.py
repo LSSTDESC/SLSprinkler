@@ -54,7 +54,10 @@ def main():
     ps_df['total_magnification'] = np.nan 
     src_light_df['total_magnification_bulge'] = np.nan 
     src_light_df['total_magnification_disk'] = np.nan
-    dc2_sprinkler = DC2Sprinkler() # utility class for flux calculation
+    for band in list('ugrizy'):
+        src_light_df[f'lensed_flux_{band}'] = np.nan
+        src_light_df[f'lensed_flux_{band}_noMW'] = np.nan
+    dc2_sprinkler = DC2Sprinkler() # utility class for flux integration
 
     #####################
     # Model assumptions #
@@ -75,28 +78,31 @@ def main():
     sys_ids = lens_df['lens_cat_sys_id'].unique()
     progress = tqdm(total=len(sys_ids))
     for i, sys_id in enumerate(sys_ids):
-        # Slice relevant params
-        lens_info = lens_df[lens_df['lens_cat_sys_id']==sys_id].squeeze()
-        ps_info = ps_df[ps_df['lens_cat_sys_id'] == sys_id].iloc[[0]].copy() # df of length 1
-        #ps_info_full = ps_df[ps_df['lens_cat_sys_id'] == sys_id].copy() # df of length 2 or 4
-        ps_df_index = ps_df[ps_df['lens_cat_sys_id'] == sys_id].index # length 2 or 4
-        ps_df.drop(ps_df_index, axis=0, inplace=True) # delete for now, will add back
-        src_light_info = src_light_df.loc[src_light_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze() # arbitarily take the first lensed image, since the source properties are the same across the images
-        src_light_info = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].iloc[[0]].copy() # df of length 1
-        src_light_index = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].index # length 2 or 4
-        src_light_df.drop(src_light_index, axis=0, inplace=True)
+        #######################
+        # Slice relevant rows #
+        #######################
+        # Lens mass
+        lens_info = lens_df[lens_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze()
+        # Lensed point source
+        ps_info = ps_df[ps_df['lens_cat_sys_id'] == sys_id].iloc[[0]].copy() # sub-df of length 1, to be updated
+        ps_df.drop(ps_df[ps_df['lens_cat_sys_id'] == sys_id].index, axis=0, inplace=True) # delete rows for this system for now, will add back
+        # Host light
+        src_light_read_only = src_light_df.loc[src_light_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze() # for accessing the original host info; arbitarily take the first lensed image, since properties we use are same across the images
+        src_light_info = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].iloc[[0]].copy() # sub-df of length 1, to be updated
+        src_light_df.drop(src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].index, axis=0, inplace=True) # delete rows for this system for now, will add back
+        # Properties defining lens geometry
         z_lens = lens_info['redshift']
-        z_src = src_light_info['redshift']
+        z_src = src_light_read_only['redshift']
         x_lens = lens_info['ra_lens'] # absolute position in rad
         y_lens = lens_info['dec_lens']
         x_src = ps_info[f'x_{object_type}'].values[0] # defined in arcsec wrt lens center
         y_src = ps_info[f'y_{object_type}'].values[0]
-        x_src_host = src_light_info['x_src'].values[0] # defined in arcsec wrt lens center
-        y_src_host = src_light_info['y_src'].values[0]
+        x_src_host = src_light_read_only['x_src'] # defined in arcsec wrt lens center
+        y_src_host = src_light_read_only['y_src']
 
-        #######################
-        # Solve lens equation #
-        #######################
+        ########################################
+        # Solve lens equation for point source #
+        ########################################
         lens_mass_model = LensModel(['SIE', 'SHEAR_GAMMA_PSI',], cosmo=cosmo, z_lens=z_lens, z_source=z_src)
         lens_eq_solver = LensEquationSolver(lens_mass_model)
         kwargs_lens_mass = lensing_utils.get_lens_params(lens_info, z_src=z_src, cosmo=cosmo)
@@ -116,7 +122,7 @@ def main():
         #################################
         # Update lensed AGN truth table #
         #################################
-        ps_info = ps_info.loc[ps_info.index.repeat(n_img)] # replicate enough rows
+        ps_info = ps_info.loc[ps_info.index.repeat(n_img)].reset_index(drop=True) # replicate enough rows
         # Absolute image positions in rad
         ra_image_abs = x_lens + x_image*arcsec_to_deg/np.cos(np.radians(y_lens))
         dec_image_abs = y_lens + y_image*arcsec_to_deg
@@ -133,7 +139,7 @@ def main():
         ps_info['t_delay'] = time_delays
         #ps_df.update(ps_info) # inplace op doesn't work when n_img is different from OM10
         # FIXME: Check that the following works to update fluxes correctly
-        if object_type == 'agn':
+        if object_type == 'agn': # since AGN follow a single SED template
             agn_magnorm = ps_info['magnorm'].iloc[0] # unlensed magnorm, same across images
             for agn_idx, agn_magnorm in list(enumerate(ps_info['magnorm'].values)):
                 dmag = -2.5*np.log10(np.abs(ps_info['magnification'].iloc[agn_idx]))
@@ -143,20 +149,20 @@ def main():
                                                                     magnorm_dict, lens_info['av_mw'],
                                                                     lens_info['rv_mw'])
                 for band in list('ugrizy'):
-                    ps_info.iloc[agn_idx][f'flux_{band}_agn'] = agn_flux_mw[band]
-                    ps_info.iloc[agn_idx][f'flux_{band}_agn_noMW'] = agn_flux_no_mw
+                    ps_info.loc[agn_idx, f'flux_{band}_agn'] = agn_flux_mw[band]
+                    ps_info.loc[agn_idx, f'flux_{band}_agn_noMW'] = agn_flux_no_mw[band]
 
         ps_info['total_magnification'] = np.sum(np.abs(magnification))
         ps_df = ps_df.append(ps_info, ignore_index=True, sort=False)
         ps_df.reset_index(drop=True, inplace=True) # to prevent duplicate indices
 
-        ###########################
-        # Update host truth table #
-        ###########################
-        # Solve the lens equation for a hypothetical point source at the host centroid
+        #########################################
+        # Solve lens equation for host centroid #
+        #########################################
+         # Solve the lens equation for a hypothetical point source at the host centroid
         x_image_host, y_image_host = lens_eq_solver.findBrightImage(x_src_host, y_src_host,
                                                                   kwargs_lens_mass,
-                                                                  min_distance=0.01, # default is 0.01
+                                                                  min_distance=0.0075, # default is 0.01
                                                                   numImages=4,
                                                                   search_window=num_pix*pixel_scale, # default is 5
                                                                   precision_limit=10**(-10) # default
@@ -164,20 +170,23 @@ def main():
         # Absolute image positions in rad
         ra_image_abs_host = x_lens + x_image_host*arcsec_to_deg/np.cos(np.radians(y_lens))
         dec_image_abs_host = y_lens + y_image_host*arcsec_to_deg
-        n_img_host = len(ra_image_abs)
-        # Log the lensed/unlensed positions
-        src_light_info = src_light_info.loc[src_light_info.index.repeat(n_img_host)] # replicate enough rows
+        n_img_host = len(y_image_host)
+        
+        ###########################
+        # Update host truth table #
+        ###########################
+        src_light_info = src_light_info.loc[src_light_info.index.repeat(n_img_host)].reset_index(drop=True) # replicate enough rows
         # Reorder the existing images by increasing dec to enforce a consistent image ordering system
-        increasing_dec_i_host = np.argsort(dec_image_abs_host)
-        src_light_info['unique_id'] = ['{:s}_{:d}'.format(src_light_info.iloc[0]['dc2_sys_id'], img_i) for img_i in range(n_img_host)]
+        increasing_dec_i_host = np.argsort(y_image_host)
+        src_light_info['unique_id'] = ['{:s}_{:d}'.format(src_light_read_only['dc2_sys_id'], img_i) for img_i in range(n_img_host)]
         src_light_info['image_number'] = np.arange(n_img_host)
         src_light_info['ra_host_lensed'] = ra_image_abs_host[increasing_dec_i_host]
         src_light_info['dec_host_lensed'] = dec_image_abs_host[increasing_dec_i_host]
         src_light_info['x_img'] = x_image_host[increasing_dec_i_host]
         src_light_info['y_img'] = y_image_host[increasing_dec_i_host]
 
-        bulge_img, bulge_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'bulge')
-        disk_img, disk_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'disk')
+        bulge_img, bulge_features = lensed_host_imager.get_image(lens_info, src_light_read_only, z_lens, z_src, 'bulge')
+        disk_img, disk_features = lensed_host_imager.get_image(lens_info, src_light_read_only, z_lens, z_src, 'disk')
         # Update magnorms based on lensed and unlensed flux
         for band in list('ugrizy'):
             src_light_info[f'magnorm_bulge_{band}'] = bulge_features['magnorms'][band]
@@ -185,19 +194,18 @@ def main():
         src_light_info['total_magnification_bulge'] = bulge_features['total_magnification']
         src_light_info['total_magnification_disk'] = disk_features['total_magnification']
 
-        #FIXME: below needs to be updated by each image and make sure using correct magnorms for each image
-        disk_flux_no_mw, disk_flux_mw = dc2_sprinkler.add_flux(src_light_info['sed_disk_host'][2:-1],
+        disk_flux_no_mw, disk_flux_mw = dc2_sprinkler.add_flux(src_light_read_only['sed_disk_host'][2:-1],
                                                                z_src,
                                                                disk_features['magnorms'], lens_info['av_mw'],
                                                                lens_info['rv_mw'])
 
-        bulge_flux_no_mw, bulge_flux_mw = dc2_sprinkler.add_flux(src_light_info['sed_bulge_host'][2:-1],
+        bulge_flux_no_mw, bulge_flux_mw = dc2_sprinkler.add_flux(src_light_read_only['sed_bulge_host'][2:-1],
                                                                z_src,
                                                                bulge_features['magnorms'], lens_info['av_mw'],
                                                                lens_info['rv_mw'])
         for band in list('ugrizy'):
-            src_light_info[f'flux_{band}'] = disk_flux_mw[band] + bulge_flux_mw[band]
-            src_light_info[f'flux_{band}_noMW'] = disk_flux_no_mw[band] + bulge_flux_no_mw[band]
+            src_light_info[f'lensed_flux_{band}'] = disk_flux_mw[band] + bulge_flux_mw[band]
+            src_light_info[f'lensed_flux_{band}_noMW'] = disk_flux_no_mw[band] + bulge_flux_no_mw[band]
 
         src_light_df = src_light_df.append(src_light_info, ignore_index=True, sort=False)
         src_light_df.reset_index(drop=True, inplace=True) # to prevent duplicate indices

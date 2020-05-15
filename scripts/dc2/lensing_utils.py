@@ -220,7 +220,7 @@ def get_lens_params(lens_info, z_src, cosmo):
     lens_e1, lens_e2 = param_util.phi_q2_ellipticity(lens_phie_rad, 1 - lens_info['ellip_lens'])
     # Instantiate cosmology-aware models
     lens_cosmo = LensCosmo(z_lens=lens_info['redshift'], z_source=z_src, cosmo=cosmo)
-    theta_E = lens_cosmo.sis_sigma_v2theta_E(lens_info['vel_disp_lenscat'])[0]
+    theta_E = lens_cosmo.sis_sigma_v2theta_E(lens_info['vel_disp_lenscat'])
     lam = get_lambda_factor(lens_info['ellip_lens']) # removed because lenstronomy accepts the spherically-averaged Einstein radius as input
     phi, q = param_util.ellipticity2phi_q(lens_e1, lens_e2)
     gravlens_to_lenstronomy = np.sqrt((1.0 + q**2.0)/(2.0*q)) # factor converting the grav lens ellipticity convention (square average) to lenstronomy's (product average)

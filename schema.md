@@ -62,5 +62,9 @@ Quantity Label | Unit | Definition
 `dec_host_unlensed` | degree | dec of the unlensed host centroid
 `ra_host_lensed` | degree | RA of the lensed image of a hypothetical point source located at the host centroid
 `dec_host_lensed` | degree | dec of the lensed image of a hypothetical point source located at the host centroid
+`flux_{band}` | Jy | unlensed host flux
+`flux_{band}_noMW` | Jy | unlensed host flux without Milky Way extinction 
+`lensed_flux_{band}` | Jy | total integrated flux of lensed host
+`lensed_flux_{band}_noMW` | Jy | total integrated flux of lensed host without Milky Way extinction
 
 Please contact Ji Won Park @jiwoncpark with feedback or questions.
