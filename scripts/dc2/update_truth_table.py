@@ -50,11 +50,11 @@ def main():
     lens_df = pd.read_sql(f'{object_type}_lens', str('sqlite:///' + os.path.join(input_dir, 'lens_truth.db')), index_col=0)
     ps_df = pd.read_sql(f'lensed_{object_type}', str('sqlite:///' + os.path.join(input_dir, f'lensed_{object_type}_truth.db')), index_col=0)
     src_light_df = pd.read_sql(f'{object_type}_hosts', str('sqlite:///' + os.path.join(input_dir, 'host_truth.db')), index_col=0)
-    ps_df['total_magnification'] = 0.0 # init
-    src_light_df['total_magnification_bulge'] = 0.0 # init
-    src_light_df['total_magnification_disk'] = 0.0 # init
-
-    dc2_sprinkler = DC2Sprinkler()
+    # Init columns to add
+    ps_df['total_magnification'] = np.nan 
+    src_light_df['total_magnification_bulge'] = np.nan 
+    src_light_df['total_magnification_disk'] = np.nan
+    dc2_sprinkler = DC2Sprinkler() # utility class for flux calculation
 
     #####################
     # Model assumptions #
@@ -82,13 +82,17 @@ def main():
         ps_df_index = ps_df[ps_df['lens_cat_sys_id'] == sys_id].index # length 2 or 4
         ps_df.drop(ps_df_index, axis=0, inplace=True) # delete for now, will add back
         src_light_info = src_light_df.loc[src_light_df['lens_cat_sys_id']==sys_id].iloc[0].squeeze() # arbitarily take the first lensed image, since the source properties are the same across the images
-        src_light_info_full = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].copy() # df of length 2 or 4
+        src_light_info = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].iloc[[0]].copy() # df of length 1
+        src_light_index = src_light_df[src_light_df['lens_cat_sys_id'] == sys_id].index # length 2 or 4
+        src_light_df.drop(src_light_index, axis=0, inplace=True)
         z_lens = lens_info['redshift']
         z_src = src_light_info['redshift']
         x_lens = lens_info['ra_lens'] # absolute position in rad
         y_lens = lens_info['dec_lens']
         x_src = ps_info[f'x_{object_type}'].values[0] # defined in arcsec wrt lens center
         y_src = ps_info[f'y_{object_type}'].values[0]
+        x_src_host = src_light_info['x_src'].values[0] # defined in arcsec wrt lens center
+        y_src_host = src_light_info['y_src'].values[0]
 
         #######################
         # Solve lens equation #
@@ -115,7 +119,7 @@ def main():
         ps_info = ps_info.loc[ps_info.index.repeat(n_img)] # replicate enough rows
         # Absolute image positions in rad
         ra_image_abs = x_lens + np.radians(x_image*arcsec_to_deg)/np.cos(np.radians(y_lens))
-        dec_image_abs = y_lens + np.radians(y_image*arcsec_to_deg) # FIXME: use the validated LSST function? cos(dec) factor not included for now
+        dec_image_abs = y_lens + np.radians(y_image*arcsec_to_deg)
         # Reorder the existing images by increasing dec to enforce a consistent image ordering system
         # Only 'unique_id', 'image_number', ra', 'dec', 't_delay', 'magnification' are affected by the reordering
         increasing_dec_i = np.argsort(dec_image_abs)
@@ -130,10 +134,10 @@ def main():
         #ps_df.update(ps_info) # inplace op doesn't work when n_img is different from OM10
         # FIXME: Check that the following works to update fluxes correctly
         if object_type == 'agn':
-            agn_magnorm = ps_info['magnorm'].iloc[0]
+            agn_magnorm = ps_info['magnorm'].iloc[0] # unlensed magnorm, same across images
             for agn_idx, agn_magnorm in list(enumerate(ps_info['magnorm'].values)):
                 dmag = -2.5*np.log10(np.abs(ps_info['magnification'].iloc[agn_idx]))
-                magnorm_dict = {x: agn_magnorm + dmag for x in ['u', 'g', 'r', 'i', 'z', 'y']}
+                magnorm_dict = {band: agn_magnorm + dmag for band in ['u', 'g', 'r', 'i', 'z', 'y']}
                 agn_flux_no_mw, agn_flux_mw = dc2_sprinkler.add_flux('agnSED/agn.spec.gz',
                                                                     z_src,
                                                                     magnorm_dict, lens_info['av_mw'],
@@ -149,14 +153,37 @@ def main():
         ###########################
         # Update host truth table #
         ###########################
+        # Solve the lens equation for a hypothetical point source at the host centroid
+        x_image_host, y_image_host = lens_eq_solver.findBrightImage(x_src_host, y_src_host,
+                                                                  kwargs_lens_mass,
+                                                                  min_distance=0.01, # default is 0.01
+                                                                  numImages=4,
+                                                                  search_window=num_pix*pixel_scale, # default is 5
+                                                                  precision_limit=10**(-10) # default
+                                                                  )
+        # Absolute image positions in rad
+        ra_image_abs_host = x_lens + np.radians(x_image_host*arcsec_to_deg)/np.cos(np.radians(y_lens))
+        dec_image_abs_host = y_lens + np.radians(y_image_host*arcsec_to_deg)
+        n_img_host = len(ra_image_abs)
+        # Log the lensed/unlensed positions
+        src_light_info = src_light_info.loc[src_light_info.index.repeat(n_img_host)] # replicate enough rows
+        # Reorder the existing images by increasing dec to enforce a consistent image ordering system
+        increasing_dec_i_host = np.argsort(dec_image_abs_host)
+        src_light_info['unique_id'] = ['{:s}_{:d}'.format(src_light_info.iloc[0]['dc2_sys_id'], img_i) for img_i in range(n_img_host)]
+        src_light_info['image_number'] = np.arange(n_img_host)
+        src_light_info['ra_host_lensed'] = ra_image_abs_host[increasing_dec_i_host]
+        src_light_info['dec_host_lensed'] = dec_image_abs_host[increasing_dec_i_host]
+        src_light_info['x_img'] = x_image_host[increasing_dec_i_host]
+        src_light_info['y_img'] = y_image_host[increasing_dec_i_host]
+
         bulge_img, bulge_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'bulge')
         disk_img, disk_features = lensed_host_imager.get_image(lens_info, src_light_info, z_lens, z_src, 'disk')
         # Update magnorms based on lensed and unlensed flux
         for band in list('ugrizy'):
-            src_light_info_full[f'magnorm_bulge_{band}'] = bulge_features['magnorms'][band]
-            src_light_info_full[f'magnorm_disk_{band}'] = disk_features['magnorms'][band]
-        src_light_info_full['total_magnification_bulge'] = bulge_features['total_magnification']
-        src_light_info_full['total_magnification_disk'] = disk_features['total_magnification']
+            src_light_info[f'magnorm_bulge_{band}'] = bulge_features['magnorms'][band]
+            src_light_info[f'magnorm_disk_{band}'] = disk_features['magnorms'][band]
+        src_light_info['total_magnification_bulge'] = bulge_features['total_magnification']
+        src_light_info['total_magnification_disk'] = disk_features['total_magnification']
 
         #FIXME: below needs to be updated by each image and make sure using correct magnorms for each image
         disk_flux_no_mw, disk_flux_mw = dc2_sprinkler.add_flux(src_light_info['sed_disk_host'][2:-1],
@@ -168,20 +195,21 @@ def main():
                                                                z_src,
                                                                bulge_features['magnorms'], lens_info['av_mw'],
                                                                lens_info['rv_mw'])
-
-        host_flux_no_mw = {}
-        host_flux_mw = {}
         for band in list('ugrizy'):
-            src_light_info_full[f'flux_{band}'] = disk_flux_mw[band] + bulge_flux_mw[band]
-            src_light_info_full[f'flux_{band}_noMW'] = disk_flux_no_mw[band] + bulge_flux_no_mw[band]
+            src_light_info[f'flux_{band}'] = disk_flux_mw[band] + bulge_flux_mw[band]
+            src_light_info[f'flux_{band}_noMW'] = disk_flux_no_mw[band] + bulge_flux_no_mw[band]
 
-        src_light_df.update(src_light_info_full)
+        src_light_df = src_light_df.append(src_light_info, ignore_index=True, sort=False)
+        src_light_df.reset_index(drop=True, inplace=True) # to prevent duplicate indices
 
         progress.update(1)
     # Sort by dc2_sys_id and image number
     ps_df['dc2_sys_id_int'] = [int(sys_id.split('_')[-1]) for sys_id in ps_df['dc2_sys_id']]
     ps_df.sort_values(['dc2_sys_id_int', 'image_number'], axis=0, inplace=True)
     ps_df.drop(['dc2_sys_id_int'], axis=1, inplace=True)
+    src_light_df['dc2_sys_id_int'] = [int(sys_id.split('_')[-1]) for sys_id in src_light_df['dc2_sys_id']]
+    src_light_df.sort_values(['dc2_sys_id_int', 'image_number'], axis=0, inplace=True)
+    src_light_df.drop(['dc2_sys_id_int'], axis=1, inplace=True)
     # Export lensed_ps and host truth tables to original file format
     io_utils.export_db(ps_df, input_dir, f'updated_lensed_{object_type}_truth.db', f'lensed_{object_type}', overwrite=True)
     io_utils.export_db(src_light_df, input_dir, f'updated_host_truth.db', f'{object_type}_hosts', overwrite=True)
