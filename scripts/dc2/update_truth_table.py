@@ -12,6 +12,8 @@ The fits files will be generated in the original `datadir`.
 
 """
 import os
+import sys
+sys.path.append('.')
 import argparse
 import numpy as np
 from tqdm import tqdm
@@ -22,6 +24,7 @@ from lenstronomy.LensModel.lens_model import LensModel
 from lenstronomy.LensModel.Solver.lens_equation_solver import LensEquationSolver
 import lensing_utils
 import io_utils
+from sprinkler import DC2Sprinkler
 
 def parse_args():
     """Parse command-line arguments
@@ -44,12 +47,14 @@ def main():
     input_dir = args.datadir
     object_type = args.object_type
     # Load DB files as dataframes
-    lens_df = pd.read_sql(f'{object_type}_lens', os.path.join('sqlite:///', input_dir, 'lens_truth.db'), index_col=0)
-    ps_df = pd.read_sql(f'lensed_{object_type}', os.path.join('sqlite:///', input_dir, f'lensed_{object_type}_truth.db'), index_col=0)
-    src_light_df = pd.read_sql(f'{object_type}_hosts', os.path.join('sqlite:///', input_dir, 'host_truth.db'), index_col=0)
+    lens_df = pd.read_sql(f'{object_type}_lens', str('sqlite:///' + os.path.join(input_dir, 'lens_truth.db')), index_col=0)
+    ps_df = pd.read_sql(f'lensed_{object_type}', str('sqlite:///' + os.path.join(input_dir, f'lensed_{object_type}_truth.db')), index_col=0)
+    src_light_df = pd.read_sql(f'{object_type}_hosts', str('sqlite:///' + os.path.join(input_dir, 'host_truth.db')), index_col=0)
     ps_df['total_magnification'] = 0.0 # init
     src_light_df['total_magnification_bulge'] = 0.0 # init
     src_light_df['total_magnification_disk'] = 0.0 # init
+
+    dc2_sprinkler = DC2Sprinkler()
 
     #####################
     # Model assumptions #
@@ -109,7 +114,7 @@ def main():
         #################################
         ps_info = ps_info.loc[ps_info.index.repeat(n_img)] # replicate enough rows
         # Absolute image positions in rad
-        ra_image_abs = x_lens + np.radians(x_image*arcsec_to_deg)
+        ra_image_abs = x_lens + np.radians(x_image*arcsec_to_deg)/np.cos(np.radians(y_lens))
         dec_image_abs = y_lens + np.radians(y_image*arcsec_to_deg) # FIXME: use the validated LSST function? cos(dec) factor not included for now
         # Reorder the existing images by increasing dec to enforce a consistent image ordering system
         # Only 'unique_id', 'image_number', ra', 'dec', 't_delay', 'magnification' are affected by the reordering
@@ -123,6 +128,20 @@ def main():
         time_delays -= time_delays[0] # time delays relative to first image
         ps_info['t_delay'] = time_delays
         #ps_df.update(ps_info) # inplace op doesn't work when n_img is different from OM10
+        # FIXME: Check that the following works to update fluxes correctly
+        if object_type == 'agn':
+            agn_magnorm = ps_info['magnorm'].iloc[0]
+            for agn_idx, agn_magnorm in list(enumerate(ps_info['magnorm'].values)):
+                dmag = -2.5*np.log10(np.abs(ps_info['magnification'].iloc[agn_idx]))
+                magnorm_dict = {x: agn_magnorm + dmag for x in ['u', 'g', 'r', 'i', 'z', 'y']}
+                agn_flux_no_mw, agn_flux_mw = dc2_sprinkler.add_flux('agnSED/agn.spec.gz',
+                                                                    z_src,
+                                                                    magnorm_dict, lens_info['av_mw'],
+                                                                    lens_info['rv_mw'])
+                for band in list('ugrizy'):
+                    ps_info.iloc[agn_idx][f'flux_{band}_agn'] = agn_flux_mw[band]
+                    ps_info.iloc[agn_idx][f'flux_{band}_agn_noMW'] = agn_flux_no_mw
+
         ps_info['total_magnification'] = np.sum(np.abs(magnification))
         ps_df = ps_df.append(ps_info, ignore_index=True, sort=False)
         ps_df.reset_index(drop=True, inplace=True) # to prevent duplicate indices
@@ -138,7 +157,24 @@ def main():
             src_light_info_full[f'magnorm_disk_{band}'] = disk_features['magnorms'][band]
         src_light_info_full['total_magnification_bulge'] = bulge_features['total_magnification']
         src_light_info_full['total_magnification_disk'] = disk_features['total_magnification']
-        #FIXME: flux values also need updating
+
+        #FIXME: below needs to be updated by each image and make sure using correct magnorms for each image
+        disk_flux_no_mw, disk_flux_mw = dc2_sprinkler.add_flux(src_light_info['sed_disk_host'][2:-1],
+                                                               z_src,
+                                                               disk_features['magnorms'], lens_info['av_mw'],
+                                                               lens_info['rv_mw'])
+
+        bulge_flux_no_mw, bulge_flux_mw = dc2_sprinkler.add_flux(src_light_info['sed_bulge_host'][2:-1],
+                                                               z_src,
+                                                               bulge_features['magnorms'], lens_info['av_mw'],
+                                                               lens_info['rv_mw'])
+
+        host_flux_no_mw = {}
+        host_flux_mw = {}
+        for band in list('ugrizy'):
+            src_light_info_full[f'flux_{band}'] = disk_flux_mw[band] + bulge_flux_mw[band]
+            src_light_info_full[f'flux_{band}_noMW'] = disk_flux_no_mw[band] + bulge_flux_no_mw[band]
+
         src_light_df.update(src_light_info_full)
 
         progress.update(1)

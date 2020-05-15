@@ -550,10 +550,15 @@ class DC2Sprinkler(BaseSprinkler):
                 x_img = matched_sys_cat.iloc[i]['x_img'][j]
                 y_img = matched_sys_cat.iloc[i]['y_img'][j]
 
-                delta_ra = np.radians(x_img / 3600.0)
-                delta_dec = np.radians(y_img / 3600.0)
-                ra_host = ra_lens + delta_ra/np.cos(dec_lens)
-                dec_host = dec_lens + delta_dec
+                delta_ra_unlensed = x_src / 3600.0
+                delta_dec_unlensed = y_src / 3600.0
+                ra_host_unlensed = ra_lens + delta_ra_unlensed/np.cos(np.radians(dec_lens))
+                dec_host_unlensed = dec_lens + delta_dec_unlensed
+
+                delta_ra_lensed = x_img / 3600.0
+                delta_dec_lensed = y_img / 3600.0
+                ra_host_lensed = ra_lens + delta_ra_lensed/np.cos(np.radians(dec_lens))
+                dec_host_lensed = dec_lens + delta_dec_lensed
 
                 redshift = matched_sys_cat.iloc[i]['z_src']
                 shear_1 = 0. #matched_hosts.iloc[i]['gamma_1']
@@ -627,7 +632,8 @@ class DC2Sprinkler(BaseSprinkler):
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
 
                 new_row = [unique_id, x_src, y_src, x_img, y_img,
-                        ra_lens, dec_lens, ra_host, dec_host,
+                        ra_lens, dec_lens, ra_host_unlensed, dec_host_unlensed,
+                        ra_host_lensed, dec_host_lensed,
                         magnorm_disk_u, magnorm_disk_g, magnorm_disk_r,
                         magnorm_disk_i, magnorm_disk_z, magnorm_disk_y,
                         magnorm_bulge_u, magnorm_bulge_g, magnorm_bulge_r,
@@ -645,7 +651,8 @@ class DC2Sprinkler(BaseSprinkler):
 
         host_df = pd.DataFrame(new_entries,
                             columns=['unique_id', 'x_src', 'y_src', 'x_img', 'y_img',
-                                        'ra_lens', 'dec_lens', 'ra_host', 'dec_host',
+                                        'ra_lens', 'dec_lens', 'ra_host_unlensed', 'dec_host_unlensed',
+                                        'ra_host_lensed', 'dec_host_lensed',
                                         'magnorm_disk_u', 'magnorm_disk_g', 'magnorm_disk_r',
                                         'magnorm_disk_i', 'magnorm_disk_z', 'magnorm_disk_y',
                                         'magnorm_bulge_u', 'magnorm_bulge_g', 'magnorm_bulge_r',
@@ -773,9 +780,11 @@ class DC2Sprinkler(BaseSprinkler):
                 id_lens = matched_lenses.iloc[i]['galaxy_id']
                 x_src = matched_sys_cat.iloc[i]['x_src']
                 y_src = matched_sys_cat.iloc[i]['y_src']
-                delta_ra = np.radians(matched_sys_cat.iloc[i]['x_img'][j] / 3600.0)
-                delta_dec = np.radians(matched_sys_cat.iloc[i]['y_img'][j] / 3600.0)
-                ra = ra_lens + delta_ra/np.cos(dec_lens)
+                x_img = matched_sys_cat.iloc[i]['x_img'][j]
+                y_img = matched_sys_cat.iloc[i]['y_img'][j]
+                delta_ra = matched_sys_cat.iloc[i]['x_img'][j] / 3600.0
+                delta_dec = matched_sys_cat.iloc[i]['y_img'][j] / 3600.0
+                ra = ra_lens + delta_ra/np.cos(np.radians(dec_lens))
                 dec = dec_lens + delta_dec
 
                 redshift = matched_sys_cat.iloc[i]['z_src']
@@ -811,7 +820,7 @@ class DC2Sprinkler(BaseSprinkler):
 
                 cat_sys_id = matched_sys_cat.iloc[i]['system_id']
 
-                new_row = [gal_unique_id, ra, dec, x_src, y_src,
+                new_row = [gal_unique_id, ra, dec, x_src, y_src, x_img, y_img,
                         redshift, t_delay, magnorm,
                         agn_flux_mw['u'], agn_flux_mw['g'], agn_flux_mw['r'],
                         agn_flux_mw['i'], agn_flux_mw['z'], agn_flux_mw['y'],
@@ -828,6 +837,7 @@ class DC2Sprinkler(BaseSprinkler):
 
         agn_df = pd.DataFrame(new_entries,
                             columns=['unique_id', 'ra', 'dec', 'x_agn', 'y_agn',
+                                    'x_img', 'y_img',
                                     'redshift', 't_delay', 'magnorm',
                                     'flux_u_agn', 'flux_g_agn', 'flux_r_agn',
                                     'flux_i_agn', 'flux_z_agn', 'flux_y_agn',
@@ -902,9 +912,9 @@ class DC2Sprinkler(BaseSprinkler):
                 sn_y = matched_sys_cat.iloc[i]['sny']
                 img_x = matched_sys_cat.iloc[i]['x_img'][j]
                 img_y = matched_sys_cat.iloc[i]['y_img'][j]
-                delta_ra = np.radians(matched_sys_cat.iloc[i]['x_img'][j] / 3600.0)
-                delta_dec = np.radians(matched_sys_cat.iloc[i]['y_img'][j] / 3600.0)
-                ra = ra_lens + delta_ra/np.cos(dec_lens)
+                delta_ra = matched_sys_cat.iloc[i]['x_img'][j] / 3600.0
+                delta_dec = matched_sys_cat.iloc[i]['y_img'][j] / 3600.0
+                ra = ra_lens + delta_ra/np.cos(np.radians(dec_lens))
                 dec = dec_lens + delta_dec
 
                 t0 = matched_sys_cat.iloc[i]['t0']
