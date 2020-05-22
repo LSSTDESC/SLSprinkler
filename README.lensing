@@ -19,7 +19,7 @@ If you run the programs from a different directory, then do this:
 python <PATH TO THIS DIRECTORY>/SLSprinkler/lensed_hosts/generate_lensed_hosts_agn.py --outdir=outputs --datadir=<PATH TO THIS DIRECTORY>/SLSprinkler/truth_tables
 python <PATH TO THIS DIRECTORY>/SLSprinkler/lensed_hosts/generate_lensed_hosts_sne.py --outdir=outputs --datadir=<PATH TO THIS DIRECTORY>/SLSprinkler/truth_tables
 
---outdir and --datadir specify locations of output FITS files and location of input truth tables (including 'ell_lef.dat' which is used by 'om10_lensing_equations.py'). 
+--outdir and --datadir specify locations of output FITS files and location of input truth tables. 
 They default to 'outputs' and 'truth_tables'
 
 The default location of the output is SLSprinkler/lensed_hosts/outputs. There are 4 subdirectories, called (by default):

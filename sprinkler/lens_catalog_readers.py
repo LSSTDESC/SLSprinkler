@@ -28,16 +28,18 @@ class OM10Reader():
             'n_img':'NIMG',
             'x_img':'XIMG',
             'y_img':'YIMG',
+            'x_src':'XSRC',
+            'y_src':'YSRC',
             't_delay_img':'DELAY',
             'magnification_img':'MAG',
-            'sed_lens':'lens_sed',
-            'magnorm_lens':'sed_magNorm',
+            #'sed_lens':'lens_sed',
+            #'magnorm_lens':'sed_magNorm',
             'z_lens':'ZLENS',
             'reff_lens':'REFF',
             'ellip_lens':'ELLIP',
             'phie_lens':'PHIE',
-            'av_lens':'lens_av',
-            'rv_lens':'lens_rv',
+            #'av_lens':'lens_av',
+            #'rv_lens':'lens_rv',
             'vel_disp_lens':'VELDISP',
             'gamma':'GAMMA',
             'phi_gamma':'PHIG'
@@ -67,13 +69,16 @@ class GoldsteinSNeCatReader():
         self.config = {
             'system_id':'sysno',
             'z_src':'zs',
+            't0':'t0',
             'n_img':'n_img',
             'x_img':'x_img',
             'y_img':'y_img',
+            'x_src':'host_x',
+            'y_src':'host_y',
             't_delay_img':'t_delay_img',
             'magnification_img':'magnification_img',
-            'MB_host':'MB',
-            'type_host':'host_type',
+            'MB':'MB',
+            'host_type':'host_type',
             'sed_lens':'lensgal_sed',
             'magnorm_lens':'magnorm_lens',
             'z_lens':'zl',
@@ -87,7 +92,8 @@ class GoldsteinSNeCatReader():
             'phi_gamma':'theta_gamma',
             'x0':'x0',
             'x1':'x1',
-            'c':'c'
+            'c':'c',
+            'weight':'weight'
         }
 
     def merge_catalog(self, df_sys, df_img):
