@@ -1,10 +1,11 @@
 """
-Readers for strongly lensed systems
+Readers for galaxy catalogs to match to lens systems
 """
 
 import numpy as np
 import pandas as pd
-import pickle
+import GCRCatalogs
+import sqlite3
 
 __all__ = ['DC2Reader']
 
@@ -15,68 +16,63 @@ class DC2Reader():
     and SED information.
     """
 
-    def __init__(self, filename):
+    def __init__(self, catalog_version):
 
-        self.filename = filename
+        self.catalog_version = catalog_version
 
-        self.config = {
-            'galaxy_id':'galaxy_id',
-            'ra':'ra',
-            'dec':'dec',
-            'redshift':'redshift',
-            'gamma_1':'shear_1',
-            'gamma_2':'shear_2_phosim',
-            'kappa':'convergence',
-            'av_internal_disk':'disk_av',
-            'av_internal_bulge':'bulge_av',
-            'rv_internal_disk':'disk_rv',
-            'rv_internal_bulge':'bulge_rv',
-            'av_mw':'av_mw',
-            'rv_mw':'rv_mw',
-            'semi_major_axis_disk':'size_disk_true',
-            'semi_major_axis_bulge':'size_bulge_true',
-            'semi_minor_axis_disk':'size_minor_disk_true',
-            'semi_minor_axis_bulge':'size_minor_bulge_true',
-            'position_angle':'position_angle_true',
-            'magnorm_disk':'disk_magnorm',
-            'magnorm_bulge':'bulge_magnorm',
-            'fluxes_disk':'disk_fluxes',
-            'fluxes_bulge':'bulge_fluxes',
-            'gal_type':'host_type',
-            'magnorm_agn':'magNorm_agn',
-            'mag_i_agn':'mag_i_agn',
-            'varParamStr_agn':'varParamStr_agn'
-        }
+        # The columns we need to query
+        self.quantity_list = [
+            'galaxy_id',
+            'ra',
+            'dec',
+            'redshift_true',
+            'shear_1',
+            'shear_2_phosim',
+            'convergence',
+            'position_angle_true',
+            'size_true',
+            'size_minor_true',
+            'size_disk_true',
+            'size_minor_disk_true',
+            'size_bulge_true',
+            'size_minor_bulge_true',
+            'ellipticity_true',
+            'sersic_disk',
+            'sersic_bulge',
+            'stellar_mass_bulge',
+            'stellar_mass',
+            'totalStarFormationRate',
+            'morphology/spheroidHalfLightRadius',
+            'morphology/spheroidHalfLightRadiusArcsec',
+            'mag_true_r_lsst',
+            'mag_true_i_lsst'
+        ]
 
-    def merge_labelled_columns(self, df_merged, label):
+    def load_galaxy_catalog(self, catalog_filters):
 
-        labelled_columns = ['%s_u' %label,
-                            '%s_g' %label,
-                            '%s_r' %label,
-                            '%s_i' %label,
-                            '%s_z' %label,
-                            '%s_y' %label]
+        catalog = GCRCatalogs.load_catalog(self.catalog_version)
+        dc2_galaxies = catalog.get_quantities(self.quantity_list,
+                                              catalog_filters)
+        dc2_galaxies_df = pd.DataFrame(dc2_galaxies)
 
-        label_array = df_merged[labelled_columns].values
-        
-        df_merged[label] = list(label_array)
+        return dc2_galaxies_df
 
-        return df_merged
+    def trim_catalog(self, full_lens_df):
 
-    def load_catalog(self):
+        # Keep only "elliptical" galaxies. Use bulge/total mass ratio as proxy.
+        trim_idx_ellip = np.where(full_lens_df['stellar_mass_bulge']/
+                                  full_lens_df['stellar_mass'] > 0.99)[0]
+        trim_lens_catalog = full_lens_df.iloc[trim_idx_ellip].reset_index(drop=True)
 
-        with open(self.filename, 'rb') as f:
-            dc2_cat = pickle.load(f)
-        
-        dc2_cat = self.merge_labelled_columns(dc2_cat, 'disk_magnorm')
-        dc2_cat = self.merge_labelled_columns(dc2_cat, 'bulge_magnorm')
-        dc2_cat = self.merge_labelled_columns(dc2_cat, 'disk_fluxes')
-        dc2_cat = self.merge_labelled_columns(dc2_cat, 'bulge_fluxes')
+        return trim_lens_catalog
 
-        dc2_cat_dict = {}
+    def load_agn_catalog(self, agn_db_file, agn_trim_query):
 
-        for key, val in self.config.items():
-            cat_vals = dc2_cat[val]
-            dc2_cat_dict[key] = cat_vals
+        conn = sqlite3.connect(agn_db_file)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
 
-        return dc2_cat_dict
+        agn_df = pd.read_sql_query("SELECT * FROM agn_params", conn)
+        trim_agn_df = agn_df.query(agn_trim_query).reset_index(drop=True)
+
+        return trim_agn_df
