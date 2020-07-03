@@ -57,6 +57,9 @@ class lensedSneCat(instCatUtils):
             current_sn_obj.mwEBVfromMaps()
             sed_mjd = obs_mjd - self.truth_cat['t_delay'].iloc[idx]
 
+            # Following follows from
+            # https://github.com/lsst/sims_catUtils/blob/master/python/lsst/sims/catUtils/mixins/sncat.py
+
             sn_sed_obj = current_sn_obj.SNObjectSourceSED(time=sed_mjd,
                                                           wavelen=np.arange(wavelen_min,
                                                                             wavelen_max,
