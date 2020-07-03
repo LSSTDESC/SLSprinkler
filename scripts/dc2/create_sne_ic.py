@@ -57,13 +57,14 @@ class lensedSneCat(instCatUtils):
             current_sn_obj.mwEBVfromMaps()
             sed_mjd = obs_mjd - self.truth_cat['t_delay'].iloc[idx]
 
-            sn_sed_obj = current_sn_obj.SNObjectSED(time=sed_mjd,
-                                                    wavelen=np.arange(wavelen_min, wavelen_max,
-                                                                      wavelen_step))
+            sn_sed_obj = current_sn_obj.SNObjectSourceSED(time=sed_mjd,
+                                                          wavelen=np.arange(wavelen_min,
+                                                                            wavelen_max,
+                                                                            wavelen_step))
             flux_500 = sn_sed_obj.flambda[np.where(sn_sed_obj.wavelen >= 499.99)][0]
 
             if flux_500 > 0.:
-                sn_magnorm = current_sn_obj.catsimBandMag(self.imSimBand, sed_mjd)
+                sn_magnorm = sn_sed_obj.calcMag(bandpass=self.imSimBand)
                 sn_name = None
                 if self.write_sn_sed:
                     sn_name = '%s/specFileGLSN_%s_%s_%.4f.txt' % (self.sed_folder_name,
