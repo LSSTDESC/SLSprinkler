@@ -21,7 +21,6 @@ class lensedSneCat(instCatUtils):
                  sed_folder_name, write_sn_sed=True):
 
         self.truth_cat = truth_cat
-        self.sn_obj = SNObject(0., 0.)
         self.imSimBand = Bandpass()
         self.imSimBand.imsimBandpass()
         self.sed_folder_name = sed_folder_name
@@ -44,26 +43,27 @@ class lensedSneCat(instCatUtils):
 
         for idx in range(len(self.truth_cat)):
 
-            sn_param_dict = copy.deepcopy(self.sn_obj.SNstate)
-            sn_param_dict['_ra'] = np.radians(self.truth_cat['ra'].iloc[idx])
-            sn_param_dict['_dec'] = np.radians(self.truth_cat['dec'].iloc[idx])
-            sn_param_dict['z'] = self.truth_cat['redshift'].iloc[idx]
-            sn_param_dict['c'] = self.truth_cat['c'].iloc[idx]
-            sn_param_dict['x0'] = self.truth_cat['x0'].iloc[idx]
-            sn_param_dict['x1'] = self.truth_cat['x1'].iloc[idx]
-            sn_param_dict['t0'] = self.truth_cat['t0'].iloc[idx]
-
-            current_sn_obj = self.sn_obj.fromSNState(sn_param_dict)
-            current_sn_obj.mwEBVfromMaps()
             sed_mjd = obs_mjd - self.truth_cat['t_delay'].iloc[idx]
 
-            sn_sed_obj = current_sn_obj.SNObjectSED(time=sed_mjd,
-                                                    wavelen=np.arange(wavelen_min, wavelen_max,
-                                                                      wavelen_step))
+            current_sn_obj = SNObject(ra=self.truth_cat['ra'].iloc[idx],
+                                      dec=self.truth_cat['dec'].iloc[idx])
+            current_sn_obj.set(z=self.truth_cat['redshift'].iloc[idx],
+                               t0=self.truth_cat['t0'].iloc[idx],
+                               x0=self.truth_cat['x0'].iloc[idx],
+                               x1=self.truth_cat['x1'].iloc[idx],
+                               c=self.truth_cat['c'].iloc[idx])
+
+            # Following follows from
+            # https://github.com/lsst/sims_catUtils/blob/master/python/lsst/sims/catUtils/mixins/sncat.py
+
+            sn_sed_obj = current_sn_obj.SNObjectSourceSED(time=sed_mjd,
+                                                          wavelen=np.arange(wavelen_min,
+                                                                            wavelen_max,
+                                                                            wavelen_step))
             flux_500 = sn_sed_obj.flambda[np.where(sn_sed_obj.wavelen >= 499.99)][0]
 
             if flux_500 > 0.:
-                sn_magnorm = current_sn_obj.catsimBandMag(self.imSimBand, sed_mjd)
+                sn_magnorm = sn_sed_obj.calcMag(bandpass=self.imSimBand)
                 sn_name = None
                 if self.write_sn_sed:
                     sn_name = '%s/specFileGLSN_%s_%s_%.4f.txt' % (self.sed_folder_name,
